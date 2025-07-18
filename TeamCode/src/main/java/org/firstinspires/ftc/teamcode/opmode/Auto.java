@@ -790,7 +790,7 @@ public final class Auto extends LinearOpMode {
                                 state = SCORING_1;
                                 stopDt();
                             }
-                            else if (trajDone) { // skip to 2 if didn't get 1
+                            else if (trajDone || barnacle == 1) { // skip to 2 if didn't get 1
                                 activeTraj = robot.drivetrain.actionBuilder(robot.drivetrain.pose)
                                         .afterTime(0, () -> robot.intake.extendo.setExtended(false))
                                         .strafeToLinearHeading(intaking2.toVector2d(), intaking2.heading)
@@ -815,8 +815,13 @@ public final class Auto extends LinearOpMode {
 
                         case SCORING_1:
                             if (trajDone) {
-                                activeTraj = intake2;
-                                state = INTAKING_2;
+                                if (barnacle == 2) {
+                                    activeTraj = intake3;
+                                    state = INTAKING_3;
+                                } else {
+                                    activeTraj = intake2;
+                                    state = INTAKING_2;
+                                }
                             }
                             break;
                         case INTAKING_2:
@@ -851,8 +856,18 @@ public final class Auto extends LinearOpMode {
 
                         case SCORING_2:
                             if (trajDone) {
-                                activeTraj = intake3;
-                                state = INTAKING_3;
+
+                                if (barnacle == 3) {
+                                    Pose2d current = robot.drivetrain.pose;
+                                    activeTraj = robot.drivetrain.actionBuilder(current)
+                                            .setTangent(current.heading.toDouble())
+                                            .splineTo(snapshotPos.toVector2d(), snapshotPos.heading)
+                                            .build();
+                                    state = DRIVING_TO_SUB;
+                                } else {
+                                    activeTraj = intake3;
+                                    state = INTAKING_3;
+                                }
                             }
                             break;
                         case INTAKING_3:
