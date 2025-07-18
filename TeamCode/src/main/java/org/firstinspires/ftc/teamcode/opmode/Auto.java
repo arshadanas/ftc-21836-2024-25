@@ -929,6 +929,8 @@ public final class Auto extends LinearOpMode {
                             break;
                         case TAKING_PICTURE:
 
+                            if (remaining < TIME_PARK) barnaclePark();
+                            else if (!sampleDetector.detections.isEmpty()) {
 
                                 double extendoInches = hypot(sampleDetector.offsetToSample.x, sampleDetector.offsetToSample.y) + LL_EXTEND_OFFSET;
 
@@ -960,24 +962,8 @@ public final class Auto extends LinearOpMode {
                         case SUB_INTAKING:
 
 
-                            if (remaining < TIME_PARK) {
-
-                                Pose2d current = robot.drivetrain.pose;
-
-                                EditablePose zone = barnacle == 1 ? park1 :
-                                                    barnacle == 2 ? park2 :
-                                                                    park3;
-
-                                activeTraj = robot.drivetrain.actionBuilder(current)
-                                        .stopAndAdd(() -> robot.intake.setRollerAndAngle(0))
-                                        .setTangent(PI + current.heading.toDouble())
-                                        .waitSeconds(WAIT_INTAKE_RETRACT_POST_SUB)
-                                        .splineTo(zone.toVector2d(), PI + zone.heading)
-                                        .build();
-                                state = PARKING;
-                                stopDt();
-
-                            } else if (robot.hasSample()) {
+                            if (remaining < TIME_PARK) barnaclePark();
+                            else if (robot.hasSample()) {
                                 robot.headlight.setActivated(false);
                                 Pose2d current = robot.drivetrain.pose;
 
@@ -1010,6 +996,23 @@ public final class Auto extends LinearOpMode {
                     }
 
                     return true;
+                }
+
+                private void barnaclePark() {
+                    Pose2d current = robot.drivetrain.pose;
+
+                    EditablePose zone = barnacle == 1 ? park1 :
+                                        barnacle == 2 ? park2 :
+                                                        park3;
+
+                    activeTraj = robot.drivetrain.actionBuilder(current)
+                            .stopAndAdd(() -> robot.intake.setRollerAndAngle(0))
+                            .setTangent(PI + current.heading.toDouble())
+                            .waitSeconds(WAIT_INTAKE_RETRACT_POST_SUB)
+                            .splineTo(zone.toVector2d(), PI + zone.heading)
+                            .build();
+                    state = PARKING;
+                    stopDt();
                 }
 
                 private void searchAgainForSample(Robot robot) {
