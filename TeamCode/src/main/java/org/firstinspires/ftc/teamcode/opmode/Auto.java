@@ -5,7 +5,6 @@ import static com.arcrobotics.ftclib.gamepad.GamepadKeys.Button.DPAD_DOWN;
 import static com.arcrobotics.ftclib.gamepad.GamepadKeys.Button.DPAD_UP;
 import static com.arcrobotics.ftclib.gamepad.GamepadKeys.Button.X;
 import static com.arcrobotics.ftclib.gamepad.GamepadKeys.Button.Y;
-import static org.firstinspires.ftc.teamcode.control.vision.AutoSampleAligner.LL_TURN_MULTIPLIER;
 import static org.firstinspires.ftc.teamcode.control.vision.pipeline.Sample.NEUTRAL;
 import static org.firstinspires.ftc.teamcode.opmode.Auto.AutonConfig.CONFIRMING;
 import static org.firstinspires.ftc.teamcode.opmode.Auto.AutonConfig.EDITING_ALLIANCE;
@@ -51,7 +50,6 @@ import com.acmerobotics.roadrunner.TurnConstraints;
 import com.acmerobotics.roadrunner.Vector2d;
 import com.acmerobotics.roadrunner.ftc.Actions;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
-import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.util.ElapsedTime;
@@ -60,9 +58,8 @@ import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.control.FirstTerminateAction;
 import org.firstinspires.ftc.teamcode.control.motion.EditablePose;
 import org.firstinspires.ftc.teamcode.roadrunner.MecanumDrive;
-import org.firstinspires.ftc.teamcode.control.vision.AutoSampleAligner;
+import org.firstinspires.ftc.teamcode.control.vision.detector.SampleDetector;
 import org.firstinspires.ftc.teamcode.subsystem.Deposit;
-import org.firstinspires.ftc.teamcode.control.vision.LimelightEx;
 import org.firstinspires.ftc.teamcode.subsystem.Robot;
 import org.firstinspires.ftc.teamcode.subsystem.utility.cachedhardware.CachedDcMotorEx;
 
@@ -113,6 +110,7 @@ public final class Auto extends LinearOpMode {
             LL_SPEED_MAX_EXTENDO = 1,
             LL_SWEEP_ANGLE_RANGE = 10,
             LL_SWEEP_SPEED = 0.5,
+            LL_TURN_MULTIPLIER = 1.25,
             LL_WAIT_INTAKE = 1,
 
             WAIT_MAX_INTAKE = 1,
@@ -213,9 +211,7 @@ public final class Auto extends LinearOpMode {
 
             deliveryPos = new EditablePose(36, -50, 0),
 
-            intakingSpec = new EditablePose(36, -60, PI / 2),
-
-            targetOffset = new EditablePose(0 ,0, 0);
+            intakingSpec = new EditablePose(36, -60, PI / 2);
 
     static Pose2d pose = new Pose2d(0,0, 0.5 * PI);
     static boolean isRedAlliance = false;
@@ -302,15 +298,12 @@ public final class Auto extends LinearOpMode {
             printConfig(false, timer.seconds(), selection, specimenSide, cycles);
         }
 
-        Limelight3A limelight3a = hardwareMap.get(Limelight3A.class, "limelight");
-        AutoSampleAligner sampleAligner = new AutoSampleAligner(new LimelightEx(limelight3a, hardwareMap));
-        sampleAligner.activateLimelight(
+        SampleDetector sampleDetector = new SampleDetector(hardwareMap);
+        sampleDetector.setPipeline(
                 specimenSide ?
-                /*specimen*/ isRedAlliance ? AutoSampleAligner.Pipeline.RED : AutoSampleAligner.Pipeline.BLUE :
-                /*sample*/   isRedAlliance ? AutoSampleAligner.Pipeline.YELLOW_RED : AutoSampleAligner.Pipeline.YELLOW_BLUE
+                /*specimen*/ isRedAlliance ? SampleDetector.Pipeline.RED : SampleDetector.Pipeline.BLUE :
+                /*sample*/   isRedAlliance ? SampleDetector.Pipeline.YELLOW_RED : SampleDetector.Pipeline.YELLOW_BLUE
         );
-        limelight3a.stop();
-        limelight3a.start();
 
         robot.intake.setAlliance(isRedAlliance);
 
@@ -473,8 +466,6 @@ public final class Auto extends LinearOpMode {
 
                 State state = SCORING_PRELOAD;
 
-                Action snapshotAction = null;
-
                 ElapsedTime matchTimer = null;
 
                 Action activeTraj = scorePreload;
@@ -498,10 +489,11 @@ public final class Auto extends LinearOpMode {
                             if (trajDone) {
                                 state = TAKING_PICTURE;
                                 timer.reset();
-                                snapshotAction = new SequentialAction(
+                                sampleDetector.detections.clear();
+                                activeTraj = new SequentialAction(
                                         new SleepAction(LL_MIN_PICTURE_TIME),
                                         new FirstTerminateAction(
-                                                sampleAligner.detectTarget(),
+                                                t -> !sampleDetector.run(),
                                                 new SleepAction(LL_MAX_PICTURE_TIME)
                                         )
                                 );
@@ -509,19 +501,14 @@ public final class Auto extends LinearOpMode {
                             break;
                         case TAKING_PICTURE:
 
-                            boolean done = snapshotAction.run(p);
+                            if (!sampleDetector.detections.isEmpty()) {
 
-                            EditablePose offset = new EditablePose(sampleAligner.getTargetOffset());
-
-                            if (!(offset.x == 0 && offset.y == 0 && offset.heading == 0)) {
-
-                                targetOffset = offset;
-                                double extendoInches = hypot(targetOffset.x, targetOffset.y) + LL_EXTEND_OFFSET;
+                                double extendoInches = hypot(sampleDetector.offsetToSample.x, sampleDetector.offsetToSample.y) + LL_EXTEND_OFFSET;
 
                                 robot.intake.extendo.powerCap = LL_SPEED_MAX_EXTENDO;
 
                                 activeTraj = robot.drivetrain.actionBuilder(robot.drivetrain.pose)
-                                        .turn(-targetOffset.heading * LL_TURN_MULTIPLIER)
+                                        .turn(-sampleDetector.offsetToSample.heading * LL_TURN_MULTIPLIER)
                                         .stopAndAdd(() -> {
                                             robot.intake.extendo.setTarget(extendoInches);
                                             robot.intake.setAngle(0.01);
@@ -539,7 +526,7 @@ public final class Auto extends LinearOpMode {
 
                                 state = SUB_INTAKING;
 
-                            } else if (done) searchAgainForSample(robot);
+                            } else if (trajDone) searchAgainForSample(robot);
 
                             break;
 
@@ -758,8 +745,6 @@ public final class Auto extends LinearOpMode {
 
                 State state = SCORING_PRELOAD;
 
-                Action snapshotAction = null;
-
                 ElapsedTime matchTimer = null;
 
                 Action activeTraj = scorePreload;
@@ -932,10 +917,11 @@ public final class Auto extends LinearOpMode {
                             if (trajDone) {
                                 state = TAKING_PICTURE;
                                 timer.reset();
-                                snapshotAction = new SequentialAction(
+                                sampleDetector.detections.clear();
+                                activeTraj = new SequentialAction(
                                         new SleepAction(LL_MIN_PICTURE_TIME),
                                         new FirstTerminateAction(
-                                                sampleAligner.detectTarget(),
+                                                t -> !sampleDetector.run(),
                                                 new SleepAction(LL_MAX_PICTURE_TIME)
                                         )
                                 );
@@ -943,19 +929,13 @@ public final class Auto extends LinearOpMode {
                             break;
                         case TAKING_PICTURE:
 
-                            boolean done = snapshotAction.run(p);
 
-                            EditablePose offset = new EditablePose(sampleAligner.getTargetOffset());
-
-                            if (!(offset.x == 0 && offset.y == 0 && offset.heading == 0)) {
-
-                                targetOffset = offset;
-                                double extendoInches = hypot(targetOffset.x, targetOffset.y) + LL_EXTEND_OFFSET;
+                                double extendoInches = hypot(sampleDetector.offsetToSample.x, sampleDetector.offsetToSample.y) + LL_EXTEND_OFFSET;
 
                                 robot.intake.extendo.powerCap = LL_SPEED_MAX_EXTENDO;
 
                                 activeTraj = robot.drivetrain.actionBuilder(robot.drivetrain.pose)
-                                        .turn(-targetOffset.heading * LL_TURN_MULTIPLIER)
+                                        .turn(-sampleDetector.offsetToSample.heading * LL_TURN_MULTIPLIER)
                                         .stopAndAdd(() -> {
                                             robot.intake.extendo.setTarget(extendoInches);
                                             robot.intake.setAngle(0.01);
@@ -973,7 +953,7 @@ public final class Auto extends LinearOpMode {
 
                                 state = SUB_INTAKING;
 
-                            } else if (done) searchAgainForSample(robot);
+                            } else if (trajDone) searchAgainForSample(robot);
 
                             break;
 
@@ -1042,10 +1022,6 @@ public final class Auto extends LinearOpMode {
                             t -> !(robot.intake.extendo.getPosition() <= 2),
                             new SleepAction(WAIT_MAX_BEFORE_RE_SEARCH)
                     );
-//                            robot.drivetrain.actionBuilder(current)
-//                            .setTangent(PI / 2)
-//                            .strafeToLinearHeading(snapshotPos.toVector2d(), snapshotPos.heading)
-//                            .build();
 
                     state = DRIVING_TO_SUB;
                 }
