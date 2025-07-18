@@ -4,6 +4,8 @@ import static org.firstinspires.ftc.teamcode.control.vision.AutoSampleAligner.LL
 import static org.firstinspires.ftc.teamcode.opmode.Auto.LL_ANGLE_BUCKET_INCREMENT;
 import static org.firstinspires.ftc.teamcode.opmode.Auto.LL_DISTANCE_START_LOWERING;
 import static org.firstinspires.ftc.teamcode.opmode.Auto.LL_EXTEND_OFFSET;
+import static org.firstinspires.ftc.teamcode.opmode.Auto.LL_MAX_PICTURE_TIME;
+import static org.firstinspires.ftc.teamcode.opmode.Auto.LL_MIN_PICTURE_TIME;
 import static org.firstinspires.ftc.teamcode.opmode.Auto.LL_SPEED_MAX_EXTENDO;
 import static org.firstinspires.ftc.teamcode.opmode.Auto.LL_SWEEP_ANGLE_RANGE;
 import static org.firstinspires.ftc.teamcode.opmode.Auto.LL_SWEEP_SPEED;
@@ -20,6 +22,7 @@ import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.acmerobotics.roadrunner.Action;
 import com.acmerobotics.roadrunner.ParallelAction;
 import com.acmerobotics.roadrunner.Pose2d;
+import com.acmerobotics.roadrunner.SequentialAction;
 import com.acmerobotics.roadrunner.SleepAction;
 import com.acmerobotics.roadrunner.TurnConstraints;
 import com.acmerobotics.roadrunner.ftc.Actions;
@@ -57,7 +60,13 @@ public class TestLimelightSample extends LinearOpMode {
         waitForStart();
 
         // after init
-        Actions.runBlocking(sampleAligner.detectTarget(3));
+        Actions.runBlocking(new SequentialAction(
+                new SleepAction(LL_MIN_PICTURE_TIME),
+                new FirstTerminateAction(
+                        sampleAligner.detectTarget(),
+                        new SleepAction(LL_MAX_PICTURE_TIME)
+                )
+        ));
 
         EditablePose targetOffset = new EditablePose(sampleAligner.getTargetOffset());
         double extendoInches = hypot(targetOffset.x, targetOffset.y) + LL_EXTEND_OFFSET;

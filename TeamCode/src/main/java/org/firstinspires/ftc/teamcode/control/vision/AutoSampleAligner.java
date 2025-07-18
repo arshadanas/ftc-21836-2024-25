@@ -80,10 +80,9 @@ public class AutoSampleAligner {
 
     }
 
-    public Action detectTarget(double secondsToExpire) {
+    public Action detectTarget() {
         return new Action() {
             boolean isFirstTime = true;
-            final ElapsedTime expirationTimer = new ElapsedTime();
 
             @Override
             public boolean run(@NonNull TelemetryPacket telemetryPacket) {
@@ -91,26 +90,24 @@ public class AutoSampleAligner {
                     targetOffset = new Pose2d(0, 0, 0);
                     sampleDetected = false;
                     isFirstTime = false;
-                    expirationTimer.reset();
                 }
 
-                if (!sampleDetected) {
-                    sampleDetected = targetSample();
-                    if (sampleDetected) limelightEx.limelight.captureSnapshot("detected");
-                }
+                sampleDetected = targetSample();
 
-                if (sampleDetected) {
+                if (!sampleDetected) return true;
 
-                    yDistance = lensHeightFromFloor * tan(toRadians(lensAngleFromFlatOnFloor + measuredYDegreesDiff));
-                    xDistance = tan(toRadians(measuredXDegreesDiff)) * yDistance;
+                limelightEx.limelight.captureSnapshot("detected");
 
-                    yDistanceFromCenter = yDistance + lensYFromRobotCenter;
-                    xDistanceFromCenter = xDistance + lensXFromRobotCenter;
+                yDistance = lensHeightFromFloor * tan(toRadians(lensAngleFromFlatOnFloor + measuredYDegreesDiff));
+                xDistance = tan(toRadians(measuredXDegreesDiff)) * yDistance;
 
-                    targetOffset = new Pose2d(xDistanceFromCenter, yDistanceFromCenter, atan2(xDistanceFromCenter, yDistanceFromCenter));
-                }
+                yDistanceFromCenter = yDistance + lensYFromRobotCenter;
+                xDistanceFromCenter = xDistance + lensXFromRobotCenter;
 
-                return !(expirationTimer.seconds() > secondsToExpire || sampleDetected);
+                targetOffset = new Pose2d(xDistanceFromCenter, yDistanceFromCenter, atan2(xDistanceFromCenter, yDistanceFromCenter));
+
+                return false;
+
             }
         };
     }

@@ -498,13 +498,18 @@ public final class Auto extends LinearOpMode {
                             if (trajDone) {
                                 state = TAKING_PICTURE;
                                 timer.reset();
-                                snapshotAction = sampleAligner.detectTarget(LL_MAX_PICTURE_TIME);
+                                snapshotAction = new SequentialAction(
+                                        new SleepAction(LL_MIN_PICTURE_TIME),
+                                        new FirstTerminateAction(
+                                                sampleAligner.detectTarget(),
+                                                new SleepAction(LL_MAX_PICTURE_TIME)
+                                        )
+                                );
                             }
                             break;
                         case TAKING_PICTURE:
-                            snapshotAction.run(p);
 
-                            if (timer.seconds() < LL_MIN_PICTURE_TIME) break;
+                            boolean done = snapshotAction.run(p);
 
                             EditablePose offset = new EditablePose(sampleAligner.getTargetOffset());
 
@@ -534,7 +539,7 @@ public final class Auto extends LinearOpMode {
 
                                 state = SUB_INTAKING;
 
-                            } else if (timer.seconds() > LL_MAX_PICTURE_TIME) searchAgainForSample(robot);
+                            } else if (done) searchAgainForSample(robot);
 
                             break;
 
@@ -922,13 +927,18 @@ public final class Auto extends LinearOpMode {
                             if (trajDone) {
                                 state = TAKING_PICTURE;
                                 timer.reset();
-                                snapshotAction = sampleAligner.detectTarget(LL_MAX_PICTURE_TIME);
+                                snapshotAction = new SequentialAction(
+                                        new SleepAction(LL_MIN_PICTURE_TIME),
+                                        new FirstTerminateAction(
+                                                sampleAligner.detectTarget(),
+                                                new SleepAction(LL_MAX_PICTURE_TIME)
+                                        )
+                                );
                             }
                             break;
                         case TAKING_PICTURE:
-                            snapshotAction.run(p);
 
-                            if (timer.seconds() < LL_MIN_PICTURE_TIME) break;
+                            boolean done = snapshotAction.run(p);
 
                             EditablePose offset = new EditablePose(sampleAligner.getTargetOffset());
 
@@ -958,7 +968,7 @@ public final class Auto extends LinearOpMode {
 
                                 state = SUB_INTAKING;
 
-                            } else if (timer.seconds() > LL_MAX_PICTURE_TIME) searchAgainForSample(robot);
+                            } else if (done) searchAgainForSample(robot);
 
                             break;
 
