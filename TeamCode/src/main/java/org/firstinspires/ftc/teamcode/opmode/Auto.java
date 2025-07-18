@@ -168,7 +168,8 @@ public final class Auto extends LinearOpMode {
 
             Y_INCHING_FORWARD_WHEN_INTAKING = 10,
 
-            TIME_CYCLE = 3;
+            TIME_CYCLE = 5.5,
+            TIME_PARK = 2.5;
 
     /// <a href="https:///www.desmos.com/calculator/l8pl2gf1mb">Adjust spikes 1 and 2</a>
     /// <a href="https://www.desmos.com/calculator/sishohvpwc">Visualize spike samples</a>
@@ -191,6 +192,10 @@ public final class Auto extends LinearOpMode {
             sample1 = new EditablePose(-48, -26.8, PI / 2),
             sample2 = new EditablePose(-60, -27.4, PI / 2),
             sample3 = new EditablePose(-69, -27.8, PI / 2),
+
+            park1 = new EditablePose(-0.5 * SIZE_TILE, -2 * SIZE_TILE, PI),
+            park2 = new EditablePose(-1.5 * SIZE_TILE, -2 * SIZE_TILE, PI / 2),
+            park3 = new EditablePose(-2.5 * SIZE_TILE, -2 * SIZE_TILE, PI / 2),
 
             sub = new EditablePose(-22.5, -11, 0),
 
@@ -751,7 +756,7 @@ public final class Auto extends LinearOpMode {
 
                 Action activeTraj = scorePreload;
 
-                int subCycle = 1;
+                int subCycle = 1, barnacle = 0;
 
                 void stopDt() {
                     for (CachedDcMotorEx motor : dtMotors) motor.setPower(0);
@@ -874,12 +879,20 @@ public final class Auto extends LinearOpMode {
 
                         case SCORING:
                             if (trajDone) {
+                                Pose2d current = robot.drivetrain.pose;
                                 if (remaining < TIME_CYCLE) {
-                                    activeTraj = park;
+
+                                    activeTraj = barnacle == 1 ?
+                                            robot.drivetrain.actionBuilder(current)
+                                                            .setTangent(current.heading)
+                                                            .splineTo(park1.toVector2d(), 0)
+                                                            .build():
+                                            robot.drivetrain.actionBuilder(current)
+                                                    .strafeToLinearHeading((barnacle == 2 ? park2 : park3).toVector2d(), park2.heading)
+                                                    .build();
                                     state = PARKING;
                                     stopDt();
                                 } else {
-                                    Pose2d current = robot.drivetrain.pose;
                                     activeTraj = robot.drivetrain.actionBuilder(current)
                                             .setTangent(current.heading.toDouble())
                                             .splineTo(snapshotPos.toVector2d(), snapshotPos.heading)
@@ -937,7 +950,24 @@ public final class Auto extends LinearOpMode {
                         case SUB_INTAKING:
 
 
-                            if (robot.hasSample()) {
+                            if (remaining < TIME_PARK) {
+
+                                Pose2d current = robot.drivetrain.pose;
+
+                                EditablePose zone = barnacle == 1 ? park1 :
+                                                    barnacle == 2 ? park2 :
+                                                                    park3;
+
+                                activeTraj = robot.drivetrain.actionBuilder(current)
+                                        .stopAndAdd(() -> robot.intake.setRollerAndAngle(0))
+                                        .setTangent(PI + current.heading.toDouble())
+                                        .waitSeconds(WAIT_INTAKE_RETRACT_POST_SUB)
+                                        .splineTo(zone.toVector2d(), PI + zone.heading)
+                                        .build();
+                                state = PARKING;
+                                stopDt();
+
+                            } else if (robot.hasSample()) {
                                 robot.headlight.setActivated(false);
                                 Pose2d current = robot.drivetrain.pose;
 
