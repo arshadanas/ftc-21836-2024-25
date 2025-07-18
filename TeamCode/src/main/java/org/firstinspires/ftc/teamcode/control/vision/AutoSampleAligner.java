@@ -13,7 +13,9 @@ import com.acmerobotics.roadrunner.Pose2d;
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Config
 public class AutoSampleAligner {
@@ -21,6 +23,8 @@ public class AutoSampleAligner {
     private final LimelightEx limelightEx;
 
     private boolean sampleDetected;
+
+    public final List<LLResultTypes.DetectorResult> detections = new ArrayList<>();
 
     public enum Pipeline {
         YELLOW_BLUE,
@@ -60,10 +64,15 @@ public class AutoSampleAligner {
 
     public boolean targetSample() {
         limelightEx.update();
-        List<LLResultTypes.DetectorResult> detections = limelightEx.getDetectorResult();
+        detections.clear();
 
-        // checks and returns detection
-        if (detections == null || detections.isEmpty() || detections.get(0) == null) return false;
+        List<LLResultTypes.DetectorResult> llResults = limelightEx.getDetectorResult();
+        if (llResults == null) return false;
+
+        llResults.removeIf(Objects::isNull);
+        if (llResults.isEmpty()) return false;
+
+        detections.addAll(llResults);
         
         measuredXDegreesDiff = detections.get(0).getTargetXDegrees() + 0.0;
         measuredYDegreesDiff = detections.get(0).getTargetYDegrees() + 0.0;
