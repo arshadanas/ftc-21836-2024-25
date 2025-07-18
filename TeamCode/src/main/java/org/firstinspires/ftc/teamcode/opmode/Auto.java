@@ -697,7 +697,8 @@ public final class Auto extends LinearOpMode {
                         robot.intake.extendo.setTarget(EXTEND_SAMPLE_1);
                     }),
                     new FirstTerminateAction(
-                            t -> !(robot.intake.hasSample() || robot.intake.extendo.atPosition(EXTEND_SAMPLE_1)),
+                            t -> !robot.intake.extendo.atPosition(EXTEND_SAMPLE_1),
+                            t -> !robot.intake.hasSample(),
                             new SleepAction(WAIT_EXTEND_MAX_SPIKE)
                     ),
                     new SleepAction(WAIT_MAX_INTAKE)
@@ -715,7 +716,8 @@ public final class Auto extends LinearOpMode {
                         robot.intake.extendo.setTarget(EXTEND_SAMPLE_2);
                     }),
                     new FirstTerminateAction(
-                            t -> !(robot.intake.hasSample() || robot.intake.extendo.atPosition(EXTEND_SAMPLE_2)),
+                            t -> !robot.intake.extendo.atPosition(EXTEND_SAMPLE_2),
+                            t -> !robot.intake.hasSample(),
                             new SleepAction(WAIT_EXTEND_MAX_SPIKE)
                     ),
                     new SleepAction(WAIT_MAX_INTAKE)
@@ -733,7 +735,8 @@ public final class Auto extends LinearOpMode {
                         robot.intake.extendo.setTarget(EXTEND_SAMPLE_3);
                     })
                     .stopAndAdd(new FirstTerminateAction(
-                            telemetryPacket -> !(robot.intake.hasSample() || robot.intake.extendo.atPosition(EXTEND_SAMPLE_3)),
+                            t -> !robot.intake.extendo.atPosition(EXTEND_SAMPLE_3),
+                            t -> !robot.intake.hasSample(),
                             new SleepAction(WAIT_EXTEND_MAX_SPIKE)
                     ))
                     .setTangent(PI / 2)
@@ -804,7 +807,8 @@ public final class Auto extends LinearOpMode {
                                             robot.intake.extendo.setTarget(EXTEND_SAMPLE_2);
                                         })
                                         .stopAndAdd(new FirstTerminateAction(
-                                                telemetryPacket -> !(robot.intake.hasSample() || robot.intake.extendo.atPosition(EXTEND_SAMPLE_2)),
+                                                t -> !robot.intake.extendo.atPosition(EXTEND_SAMPLE_2),
+                                                t -> !robot.intake.hasSample(),
                                                 new SleepAction(WAIT_EXTEND_MAX_SPIKE)
                                         ))
                                         .waitSeconds(WAIT_MAX_INTAKE)
@@ -846,7 +850,8 @@ public final class Auto extends LinearOpMode {
                                             robot.intake.extendo.setTarget(EXTEND_SAMPLE_3);
                                         })
                                         .stopAndAdd(new FirstTerminateAction(
-                                                telemetryPacket -> !(robot.intake.hasSample() || robot.intake.extendo.atPosition(EXTEND_SAMPLE_3)),
+                                                t -> !robot.intake.extendo.atPosition(EXTEND_SAMPLE_3),
+                                                t -> !robot.intake.hasSample(),
                                                 new SleepAction(WAIT_EXTEND_MAX_SPIKE)
                                         ))
                                         .setTangent(intaking3.heading)
