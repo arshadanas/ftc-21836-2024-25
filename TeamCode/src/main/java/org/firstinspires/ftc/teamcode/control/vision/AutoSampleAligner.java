@@ -60,13 +60,13 @@ public class AutoSampleAligner {
 
     public boolean targetSample() {
         limelightEx.update();
-        List<LLResultTypes.DetectorResult> targets = limelightEx.getDetectorResult();
+        List<LLResultTypes.DetectorResult> detections = limelightEx.getDetectorResult();
 
         // checks and returns detection
-        if (targets == null || targets.isEmpty() || targets.get(0) == null) return false;
+        if (detections == null || detections.isEmpty() || detections.get(0) == null) return false;
         
-        measuredXDegreesDiff = targets.get(0).getTargetXDegrees() + 0.0;
-        measuredYDegreesDiff = targets.get(0).getTargetYDegrees() + 0.0;
+        measuredXDegreesDiff = detections.get(0).getTargetXDegrees() + 0.0;
+        measuredYDegreesDiff = detections.get(0).getTargetYDegrees() + 0.0;
         return true;
 
     }
