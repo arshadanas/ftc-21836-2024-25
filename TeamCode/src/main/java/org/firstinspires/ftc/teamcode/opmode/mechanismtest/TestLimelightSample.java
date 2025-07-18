@@ -60,12 +60,22 @@ public class TestLimelightSample extends LinearOpMode {
         waitForStart();
 
         // after init
-        Actions.runBlocking(new SequentialAction(
-                new SleepAction(LL_MIN_PICTURE_TIME),
-                new FirstTerminateAction(
-                        sampleAligner.detectTarget(),
-                        new SleepAction(LL_MAX_PICTURE_TIME)
-                )
+        Actions.runBlocking(new ParallelAction(
+                telemetryPacket -> {
+                    robot.bulkReader.bulkRead();
+                    return opModeIsActive();
+                },
+                new SequentialAction(
+                        new SleepAction(LL_MIN_PICTURE_TIME),
+                        new FirstTerminateAction(
+                                sampleAligner.detectTarget(),
+                                new SleepAction(LL_MAX_PICTURE_TIME)
+                        )
+                ),
+                telemetryPacket -> {
+                    robot.run();
+                    return opModeIsActive();
+                }
         ));
 
         EditablePose targetOffset = new EditablePose(sampleAligner.getTargetOffset());
