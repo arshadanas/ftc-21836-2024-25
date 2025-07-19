@@ -30,8 +30,6 @@ import static java.lang.Math.PI;
 import static java.lang.Math.sin;
 import static java.lang.Math.toDegrees;
 
-import com.acmerobotics.dashboard.FtcDashboard;
-import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
@@ -221,11 +219,6 @@ public final class Tele extends LinearOpMode {
                 // if (gamepadEx1.wasJustPressed(X)) doTelemetry = !doTelemetry;
                 if (gamepadEx1.wasJustPressed(B)) robot.deposit.nextState();
 //                if (gamepadEx1.wasJustPressed(A)) robot.headlight.toggle();
-
-//                if (gamepadEx1.wasJustPressed(RIGHT_BUMPER)) {
-//                    if (!robot.hasSample() && !robot.intake.extendo.isExtended()) robot.intake.extendo.setExtended(true);
-//                    if (robot.deposit.basketReady()) robot.deposit.nextState();
-//                }
 
                 robot.headlight.setActivated(robot.intake.extendo.isExtended() || gamepad1.cross);
     
