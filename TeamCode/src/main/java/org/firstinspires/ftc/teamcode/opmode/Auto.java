@@ -41,6 +41,7 @@ import com.acmerobotics.roadrunner.Action;
 import com.acmerobotics.roadrunner.AngularVelConstraint;
 import com.acmerobotics.roadrunner.InstantAction;
 import com.acmerobotics.roadrunner.MinVelConstraint;
+import com.acmerobotics.roadrunner.NullAction;
 import com.acmerobotics.roadrunner.ParallelAction;
 import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.PoseVelocity2d;
@@ -180,9 +181,6 @@ public final class Auto extends LinearOpMode {
     public static EditablePose
             admissibleError = new EditablePose(1, 1, 0.05),
             admissibleVel = new EditablePose(25, 25, toRadians(30)),
-
-            basketError = new EditablePose(1, 1, toRadians(4)),
-            basketVelError = new EditablePose(12, 12, toRadians(30)),
 
             intaking1 = new EditablePose(-61, -54, PI/3),
             intaking2 = new EditablePose(-62, -51.5, 1.4632986527692424),
@@ -718,11 +716,6 @@ public final class Auto extends LinearOpMode {
                     new SleepAction(WAIT_MAX_INTAKE)
             );
 
-            Action score2 = new ParallelAction(
-                    preExtend(robot, PRE_EXTEND_SAMPLE_3),
-                    scoreSample(robot)
-            );
-
             Action intake3 = robot.drivetrain.actionBuilder(intaking2.toPose2d())
                     .strafeToLinearHeading(intaking3.toVector2d(), intaking3.heading, new AngularVelConstraint(VEL_ANG_INTAKING_3))
                     .stopAndAdd(() -> {
@@ -849,7 +842,10 @@ public final class Auto extends LinearOpMode {
                             // Sample intaked
                             if (robot.intake.hasSample()) {
                                 robot.intake.setRollerAndAngle(0);
-                                activeTraj = score2;
+                                activeTraj = new ParallelAction(
+                                        barnacle == 3 ? new NullAction() : preExtend(robot, PRE_EXTEND_SAMPLE_3),
+                                        scoreSample(robot)
+                                );
                                 state = SCORING_2;
                                 stopDt();
                             }
@@ -1129,24 +1125,12 @@ public final class Auto extends LinearOpMode {
     private static Action preExtend(Robot robot, double length) {
         return new SequentialAction(
                 t -> robot.intake.hasSample(),
-                t -> robot.deposit.state.ordinal() < Deposit.State.ARM_MOVING_TO_BASKET.ordinal(),
+                t -> !(robot.deposit.state == Deposit.State.STANDBY || robot.deposit.state.ordinal() >= Deposit.State.ARM_MOVING_TO_BASKET.ordinal()),
                 new InstantAction(() -> {
                     robot.intake.extendo.setTarget(length);
                     robot.intake.setRollerAndAngle(1);
                 })
         );
-    }
-
-    private static boolean atPose(Robot robot, EditablePose target) {
-        EditablePose current = new EditablePose(robot.drivetrain.pose);
-        PoseVelocity2d velocityRR = robot.drivetrain.pinpoint.getVelocityRR();
-        return  abs(target.x - current.x) <= basketError.x &&
-                abs(target.y - current.y) <= basketError.y &&
-                abs(target.heading - current.heading) <= basketError.heading &&
-                abs(velocityRR.linearVel.x) <= basketVelError.x &&
-                abs(velocityRR.linearVel.y) <= basketVelError.y &&
-                abs(velocityRR.angVel) <= basketVelError.heading;
-
     }
 
 }
