@@ -21,7 +21,7 @@ public class SampleDetector {
     
     private final Limelight3A limelight;
 
-    public final List<LLResultTypes.DetectorResult> detections = new ArrayList<>();
+    public final ArrayList<LLResultTypes.DetectorResult> detections = new ArrayList<>();
 
     public enum Pipeline {
         YELLOW_BLUE,

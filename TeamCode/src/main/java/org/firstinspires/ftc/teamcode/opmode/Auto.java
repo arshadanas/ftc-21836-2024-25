@@ -169,7 +169,9 @@ public final class Auto extends LinearOpMode {
             Y_INCHING_FORWARD_WHEN_INTAKING = 10,
 
             TIME_CYCLE = 5.5,
-            TIME_PARK = 2.5;
+            TIME_PARK = 2.5,
+
+            DEG_BETWEEN_SPIKES_1_AND_2 = 0;
 
     /// <a href="https:///www.desmos.com/calculator/l8pl2gf1mb">Adjust spikes 1 and 2</a>
     /// <a href="https://www.desmos.com/calculator/sishohvpwc">Visualize spike samples</a>
@@ -676,7 +678,7 @@ public final class Auto extends LinearOpMode {
 
             // wait until deposit in position
             Action scorePreload = robot.drivetrain.actionBuilder(pose)
-                    .afterTime(0, preExtend(robot, PRE_EXTEND_SAMPLE_1))
+//                    .afterTime(0, preExtend(robot, PRE_EXTEND_SAMPLE_1))
                     .afterTime(WAIT_BEFORE_SCORING_PRELOAD, scoreSample(robot))
                     .strafeToLinearHeading(intaking1.toVector2d(), intaking1.heading)
                     .build();
@@ -768,9 +770,14 @@ public final class Auto extends LinearOpMode {
                     switch (state) {
                         case SCORING_PRELOAD:
 
-                            if (trajDone
-//                                    || atPose(robot, intaking1) && !robot.hasSample()
-                            ) {
+                            sampleDetector.run();
+
+                            if (trajDone) {
+
+                                if (sampleDetector.detections.size() >= 2) barnacle = 3;
+                                else if (sampleDetector.detections.size() == 1)
+                                    barnacle = sampleDetector.xDegFromLens > DEG_BETWEEN_SPIKES_1_AND_2 ? 2 : 1;
+
                                 sampleDetector.setPipeline(isRedAlliance ? YELLOW_RED : YELLOW_BLUE);
                                 stopDt();
                                 activeTraj = intake1;
