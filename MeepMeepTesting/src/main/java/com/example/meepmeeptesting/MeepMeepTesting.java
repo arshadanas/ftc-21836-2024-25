@@ -241,6 +241,9 @@ public class MeepMeepTesting {
 //                .setTangent(basket3.heading)
 //                .splineTo(sub1Edited.toVector2d(), sub1Edited.heading)
 //                .stopAndAdd(approachSub())
+                .strafeToLinearHeading(intaking2.toVector2d(), intaking2.heading)
+                .setTangent(intaking2.heading)
+                .splineTo(snapshotPos.toVector2d(), snapshotPos.heading)
 
                 .setTangent(PI / 2)
                 .strafeToSplineHeading(snapshotPos.toVector2d(), snapshotPos.heading)
@@ -260,7 +263,7 @@ public class MeepMeepTesting {
 //                .stopAndAdd(scoreSample())
 //                .strafeToLinearHeading(park3.toVector2d(), park1.heading)
                 .setTangent(basketFromSub.heading)
-                .splineTo(park2.toVector2d(), 0)
+                .splineTo(park1.toVector2d(), 0)
 //                .strafeTo(park1.toVector2d())
                 ;
 
