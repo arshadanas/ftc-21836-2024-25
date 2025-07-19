@@ -103,6 +103,8 @@ public final class Auto extends LinearOpMode {
             SIZE_TILE = 23.625,
             DISTANCE_BETWEEN_SPECIMENS = 2,
 
+            WAIT_BARNACLE_DETECT = 0,
+
             LL_ANGLE_BUCKET_INCREMENT = 50,
             LL_DISTANCE_START_LOWERING = 13,
             LL_EXTEND_OFFSET = -9.5,
@@ -681,6 +683,7 @@ public final class Auto extends LinearOpMode {
 //                    .afterTime(0, preExtend(robot, PRE_EXTEND_SAMPLE_1))
                     .afterTime(WAIT_BEFORE_SCORING_PRELOAD, scoreSample(robot))
                     .strafeToLinearHeading(intaking1.toVector2d(), intaking1.heading)
+                    .waitSeconds(WAIT_BARNACLE_DETECT)
                     .build();
 
             Action intake1 = new SequentialAction(
@@ -806,7 +809,7 @@ public final class Auto extends LinearOpMode {
                                 state = SCORING_1;
                                 stopDt();
                             }
-                            else if (trajDone || barnacle == 1) { // skip to 2 if didn't get 1
+                            else if (trajDone) { // skip to 2 if didn't get 1
                                 activeTraj = robot.drivetrain.actionBuilder(robot.drivetrain.pose)
                                         .afterTime(0, () -> robot.intake.extendo.setExtended(false))
                                         .strafeToLinearHeading(intaking2.toVector2d(), intaking2.heading)
