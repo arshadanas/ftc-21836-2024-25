@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.subsystem;
 
 import static com.qualcomm.robotcore.util.Range.clip;
+import static org.firstinspires.ftc.teamcode.control.vision.pipeline.Sample.BARNACLE;
 import static org.firstinspires.ftc.teamcode.opmode.Auto.divider;
 import static org.firstinspires.ftc.teamcode.opmode.Auto.mTelemetry;
 import static org.firstinspires.ftc.teamcode.subsystem.Intake.State.ARM_ENTERING_BUCKET;
@@ -98,6 +99,16 @@ public final class Intake {
                     230,
                     0.9,
                     1
+            ),
+            minWhite = new HSV(
+                    0,
+                    0,
+                    0.03
+            ),
+            maxWhite = new HSV(
+                    360,
+                    0.6,
+                    1
             );
 
     /**
@@ -105,6 +116,7 @@ public final class Intake {
      */
     public static Sample hsvToSample(HSV hsv) {
         return
+                hsv.between(minWhite, maxWhite) ? BARNACLE :
                 hsv.between(minRed, maxRed) ? RED :
                 hsv.between(minBlue, maxBlue) ? BLUE :
                 hsv.between(minYellow, maxYellow) ? NEUTRAL :
@@ -195,7 +207,7 @@ public final class Intake {
                     colorSensor.update();
                     sample = hsvToSample(hsv = colorSensor.getHSV());
 
-                    if (specimenMode && getSample() == NEUTRAL || getSample() == oppSample || hasSample() && deposit.hasSample()) {
+                    if (specimenMode && getSample() == NEUTRAL || getSample() == oppSample || getSample() == BARNACLE || hasSample() && deposit.hasSample()) {
                         ejectSample();
                         break;
                     }
