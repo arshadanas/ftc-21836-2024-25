@@ -780,8 +780,20 @@ public final class Auto extends LinearOpMode {
 
                                 sampleDetector.setPipeline(isRedAlliance ? YELLOW_RED : YELLOW_BLUE);
                                 stopDt();
-                                activeTraj = intake1;
-                                state = INTAKING_1;
+
+                                if (barnacle == 1) {
+                                    activeTraj = new SequentialAction(
+                                            robot.drivetrain.actionBuilder(intaking1.toPose2d())
+                                                    .afterTime(0, preExtend(robot, PRE_EXTEND_SAMPLE_2))
+                                                    .strafeToLinearHeading(intaking2.toVector2d(), intaking2.heading)
+                                                    .build(),
+                                            intake2
+                                    );
+                                    state = INTAKING_2;
+                                } else {
+                                    activeTraj = intake1;
+                                    state = INTAKING_1;
+                                }
                             }
                             break;
 
