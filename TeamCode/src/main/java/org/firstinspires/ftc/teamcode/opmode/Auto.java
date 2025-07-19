@@ -171,7 +171,7 @@ public final class Auto extends LinearOpMode {
             TIME_CYCLE = 5.5,
             TIME_PARK = 2.5,
 
-            DEG_BETWEEN_SPIKES_1_AND_2 = 0;
+            DEG_BETWEEN_SPIKES_1_AND_2 = (-32.336758263 + -9.73490512395) / 2;
 
     /// <a href="https:///www.desmos.com/calculator/l8pl2gf1mb">Adjust spikes 1 and 2</a>
     /// <a href="https://www.desmos.com/calculator/sishohvpwc">Visualize spike samples</a>

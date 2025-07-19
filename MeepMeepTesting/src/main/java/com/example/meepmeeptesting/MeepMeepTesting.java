@@ -90,7 +90,7 @@ public class MeepMeepTesting {
             intaking2 = new EditablePose(-62, -52, 1.4632986527692424),
             intaking3 = new EditablePose(-61, -50, 2 * PI / 3),
 
-            sample1 = new EditablePose(-51, -26.8, PI / 2),
+            sample1 = new EditablePose(-48, -26.8, PI / 2),
             sample2 = new EditablePose(-58, -27.4, PI / 2),
             sample3 = new EditablePose(-68.5, -27.8, PI / 2),
 
@@ -157,6 +157,12 @@ public class MeepMeepTesting {
                 new TranslationalVelConstraint(SPEED_SWEEPING_SUB),
                 new AngularVelConstraint(SPEED_SWEEPING_SUB_TURNING)
         ));
+
+        System.out.println(intaking1.angleTo(sample1) - intaking1.heading); // -9.73490512395 deg
+        System.out.println(intaking1.angleTo(sample2) - intaking1.heading); // -32.336758263 deg
+
+        System.out.println(intaking1.distTo(sample1));
+        System.out.println(intaking1.distTo(sample2));
 
         builder = builder
 //                .strafeToLinearHeading(intaking1.toVector2d(), intaking1.heading)
