@@ -28,6 +28,7 @@ public class SampleDetector {
         YELLOW_RED,
         BLUE,
         RED,
+        BLUE_RED,
     }
 
     public double

@@ -5,6 +5,8 @@ import static com.arcrobotics.ftclib.gamepad.GamepadKeys.Button.DPAD_DOWN;
 import static com.arcrobotics.ftclib.gamepad.GamepadKeys.Button.DPAD_UP;
 import static com.arcrobotics.ftclib.gamepad.GamepadKeys.Button.X;
 import static com.arcrobotics.ftclib.gamepad.GamepadKeys.Button.Y;
+import static org.firstinspires.ftc.teamcode.control.vision.detector.SampleDetector.Pipeline.YELLOW_BLUE;
+import static org.firstinspires.ftc.teamcode.control.vision.detector.SampleDetector.Pipeline.YELLOW_RED;
 import static org.firstinspires.ftc.teamcode.control.vision.pipeline.Sample.NEUTRAL;
 import static org.firstinspires.ftc.teamcode.opmode.Auto.AutonConfig.CONFIRMING;
 import static org.firstinspires.ftc.teamcode.opmode.Auto.AutonConfig.EDITING_ALLIANCE;
@@ -302,7 +304,8 @@ public final class Auto extends LinearOpMode {
         sampleDetector.setPipeline(
                 specimenSide ?
                 /*specimen*/ isRedAlliance ? SampleDetector.Pipeline.RED : SampleDetector.Pipeline.BLUE :
-                /*sample*/   isRedAlliance ? SampleDetector.Pipeline.YELLOW_RED : SampleDetector.Pipeline.YELLOW_BLUE
+//                /*sample*/   isRedAlliance ? AutoSampleAligner.Pipeline.YELLOW_RED : AutoSampleAligner.Pipeline.YELLOW_BLUE
+                SampleDetector.Pipeline.BLUE_RED
         );
 
         robot.intake.setAlliance(isRedAlliance);
@@ -768,6 +771,7 @@ public final class Auto extends LinearOpMode {
                             if (trajDone
 //                                    || atPose(robot, intaking1) && !robot.hasSample()
                             ) {
+                                sampleDetector.setPipeline(isRedAlliance ? YELLOW_RED : YELLOW_BLUE);
                                 stopDt();
                                 activeTraj = intake1;
                                 state = INTAKING_1;
