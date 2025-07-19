@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.control.motion;
 
 import static java.lang.Math.atan2;
+import static java.lang.Math.hypot;
 import static java.lang.Math.toDegrees;
 
 import com.acmerobotics.roadrunner.Pose2d;
@@ -34,6 +35,10 @@ public final class EditablePose {
 
     public double angleTo(EditablePose target) {
         return atan2(target.y - this.y, target.x - this.x);
+    }
+
+    public double distTo(EditablePose target) {
+        return hypot(target.y - this.y, target.x - this.x);
     }
 
     public String toString() {

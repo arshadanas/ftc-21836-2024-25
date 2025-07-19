@@ -1,6 +1,7 @@
 package com.example.meepmeeptesting;
 
 import static java.lang.Math.atan2;
+import static java.lang.Math.hypot;
 
 import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.Vector2d;
@@ -33,5 +34,9 @@ public final class EditablePose {
 
     public double angleTo(EditablePose target) {
         return atan2(target.y - this.y, target.x - this.x);
+    }
+
+    public double distTo(EditablePose target) {
+        return hypot(target.y - this.y, target.x - this.x);
     }
 }
