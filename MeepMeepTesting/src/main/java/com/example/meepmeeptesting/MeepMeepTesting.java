@@ -2,7 +2,6 @@ package com.example.meepmeeptesting;
 
 import static java.lang.Math.PI;
 import static java.lang.Math.abs;
-import static java.lang.Math.atan2;
 import static java.lang.Math.max;
 import static java.lang.Math.min;
 import static java.lang.Math.toRadians;
@@ -16,7 +15,6 @@ import com.acmerobotics.roadrunner.SequentialAction;
 import com.acmerobotics.roadrunner.SleepAction;
 import com.acmerobotics.roadrunner.TrajectoryActionBuilder;
 import com.acmerobotics.roadrunner.TranslationalVelConstraint;
-import com.acmerobotics.roadrunner.Vector2d;
 import com.noahbres.meepmeep.MeepMeep;
 import com.noahbres.meepmeep.roadrunner.DefaultBotBuilder;
 import com.noahbres.meepmeep.roadrunner.entity.RoadRunnerBotEntity;
@@ -86,6 +84,8 @@ public class MeepMeepTesting {
 
             intakingPartnerSample = new EditablePose(-29,7 - SIZE_HALF_FIELD, 0),
 
+            avoidBarnacle1 = new EditablePose(-1.5 * SIZE_TILE, -SIZE_TILE - 1.75, PI / 2.5),
+
             intaking1 = new EditablePose(-61, -54, PI/3),
             intaking2 = new EditablePose(-62, -52, 1.4632986527692424),
             intaking3 = new EditablePose(-61, -50, 2 * PI / 3),
@@ -106,7 +106,7 @@ public class MeepMeepTesting {
             sub1 = new EditablePose(-22.5, -11, 0),
             sub2 = new EditablePose(sub1.x, -4, 0),
 
-            basketFromSub = new EditablePose(-57.25, -57.25, PI/4),
+            scoringFromSub = new EditablePose(-57.25, -57.25, PI/4),
 
             aroundBeamPushing = new EditablePose(35, -30, PI / 2),
 
@@ -142,7 +142,10 @@ public class MeepMeepTesting {
                 .setStartPose(pose)
                 .build();
 
-        TrajectoryActionBuilder builder = myBot.getDrive().actionBuilder(new Pose2d(0.5 * LENGTH_ROBOT + 0.375 - 2 * SIZE_TILE, 0.5 * WIDTH_ROBOT - SIZE_HALF_FIELD, 0));
+        TrajectoryActionBuilder builder = myBot.getDrive().actionBuilder(
+//                new Pose2d(0.5 * LENGTH_ROBOT + 0.375 - 2 * SIZE_TILE, 0.5 * WIDTH_ROBOT - SIZE_HALF_FIELD, 0)
+                intaking3.toPose2d()
+        );
 
         EditablePose sub1Edited = sub1.clone(), sub2Edited = sub2.clone();
 
@@ -241,8 +244,10 @@ public class MeepMeepTesting {
 //                .setTangent(basket3.heading)
 //                .splineTo(sub1Edited.toVector2d(), sub1Edited.heading)
 //                .stopAndAdd(approachSub())
-                .strafeToLinearHeading(intaking2.toVector2d(), intaking2.heading)
-                .setTangent(intaking2.heading)
+//                .strafeToLinearHeading(intaking3.toVector2d(), intaking3.heading)
+                .strafeToLinearHeading(scoringFromSub.toVector2d(), scoringFromSub.heading)
+                .setTangent(PI / 4)
+                .splineTo(avoidBarnacle1.toVector2d(), avoidBarnacle1.heading)
                 .splineTo(snapshotPos.toVector2d(), snapshotPos.heading)
 
                 .setTangent(PI / 2)
@@ -259,10 +264,10 @@ public class MeepMeepTesting {
 //                ))
                 .setTangent(PI + snapshotPos.heading)
 //                .waitSeconds(WAIT_INTAKE_RETRACT_POST_SUB)
-                .splineTo(basketFromSub.toVector2d(), PI + basketFromSub.heading)
+                .splineTo(scoringFromSub.toVector2d(), PI + scoringFromSub.heading)
 //                .stopAndAdd(scoreSample())
 //                .strafeToLinearHeading(park3.toVector2d(), park1.heading)
-                .setTangent(basketFromSub.heading)
+                .setTangent(scoringFromSub.heading)
                 .splineTo(park1.toVector2d(), 0)
 //                .strafeTo(park1.toVector2d())
                 ;
