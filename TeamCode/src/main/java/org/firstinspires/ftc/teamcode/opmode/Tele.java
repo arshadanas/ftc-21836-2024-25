@@ -167,7 +167,7 @@ public final class Tele extends LinearOpMode {
 
             if (!robot.intake.extendo.isExtended()) extended = false;
 
-            double triggers = gamepad1.right_trigger - gamepad1.left_trigger;
+            double triggersSum = gamepad1.right_trigger - gamepad1.left_trigger;
 
             if (gamepadEx1.isDown(LEFT_BUMPER)) {
 
@@ -175,7 +175,7 @@ public final class Tele extends LinearOpMode {
 
                 robot.intake.setRollerAndAngle(0);
                 robot.deposit.setWristPitchingAngle(0);
-                robot.intake.extendo.runManual(triggers);
+                robot.intake.extendo.runManual(triggersSum);
                 robot.deposit.lift.runManual(gamepadEx1.getLeftY() * (gamepadEx1.isDown(RIGHT_BUMPER) ? 0.3 : 1));
 
                 robot.drivetrain.setHeadingWithStick(gamepadEx1.getRightX(), gamepadEx1.getRightY());
@@ -195,8 +195,8 @@ public final class Tele extends LinearOpMode {
 
             } else {
 
-                robot.intake.setRollerAndAngle(robot.deposit.hasSample() ? 0 : triggers);
-                robot.deposit.setWristPitchingAngle(robot.deposit.hasSample() ? triggers : 0);
+                robot.intake.setRollerAndAngle(robot.deposit.hasSample() ? 0 : triggersSum);
+                robot.deposit.setWristPitchingAngle(robot.deposit.hasSample() ? triggersSum : 0);
                 robot.intake.extendo.runManual(extended && robot.intake.extendoRetracting() ? -1 : 0);
                 if (!robot.deposit.lift.isClimbing()) robot.deposit.lift.runManual(0);
 
@@ -212,7 +212,7 @@ public final class Tele extends LinearOpMode {
                                             robot.deposit.intaking() ? chamberRight : scoring
                                     ).drivePower.heading :
                                     gamepadEx1.getRightX(),
-                            slowModeLocked || gamepadEx1.isDown(RIGHT_BUMPER) || triggers > 0,
+                            slowModeLocked || gamepadEx1.isDown(RIGHT_BUMPER) || triggersSum > 0,
                             useFieldCentric
                     );
 
