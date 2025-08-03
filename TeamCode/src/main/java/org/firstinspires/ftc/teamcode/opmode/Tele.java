@@ -174,6 +174,7 @@ public final class Tele extends LinearOpMode {
                 extended = false;
 
                 robot.intake.setRollerAndAngle(0);
+                robot.deposit.setWristPitchingAngle(0);
                 robot.intake.extendo.runManual(triggers);
                 robot.deposit.lift.runManual(gamepadEx1.getLeftY() * (gamepadEx1.isDown(RIGHT_BUMPER) ? 0.3 : 1));
 
