@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.subsystem;
 
+import static com.qualcomm.robotcore.util.Range.clip;
 import static org.firstinspires.ftc.teamcode.opmode.Auto.chamberRight;
 import static org.firstinspires.ftc.teamcode.opmode.Auto.divider;
 import static org.firstinspires.ftc.teamcode.opmode.Auto.mTelemetry;
@@ -267,7 +268,7 @@ public final class Deposit {
     }
 
     public void setWristPitchingAngle(double t) {
-        wristPitchingAngle = abs(t);
+        wristPitchingAngle = clip(abs(t), 0, 1);
     }
 
     public void preloadSpecimen() {
