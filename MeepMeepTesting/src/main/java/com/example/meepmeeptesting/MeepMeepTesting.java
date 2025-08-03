@@ -2,7 +2,6 @@ package com.example.meepmeeptesting;
 
 import static java.lang.Math.PI;
 import static java.lang.Math.abs;
-import static java.lang.Math.atan2;
 import static java.lang.Math.max;
 import static java.lang.Math.min;
 import static java.lang.Math.toRadians;
@@ -16,7 +15,6 @@ import com.acmerobotics.roadrunner.SequentialAction;
 import com.acmerobotics.roadrunner.SleepAction;
 import com.acmerobotics.roadrunner.TrajectoryActionBuilder;
 import com.acmerobotics.roadrunner.TranslationalVelConstraint;
-import com.acmerobotics.roadrunner.Vector2d;
 import com.noahbres.meepmeep.MeepMeep;
 import com.noahbres.meepmeep.roadrunner.DefaultBotBuilder;
 import com.noahbres.meepmeep.roadrunner.entity.RoadRunnerBotEntity;
@@ -84,36 +82,44 @@ public class MeepMeepTesting {
             admissibleError = new EditablePose(1, 1, toRadians(2)),
             admissibleVel = new EditablePose(25, 25, toRadians(30)),
 
-    intakingPartnerSample = new EditablePose(-29,7 - SIZE_HALF_FIELD, 0),
+            intakingPartnerSample = new EditablePose(-29,7 - SIZE_HALF_FIELD, 0),
 
-    intaking1 = new EditablePose(-61, -54, PI/3),
+            avoidBarnacle1 = new EditablePose(-1.5 * SIZE_TILE, -SIZE_TILE - 1.75, PI / 2.5),
+
+            intaking1 = new EditablePose(-61, -54, PI/3),
             intaking2 = new EditablePose(-62, -52, 1.4632986527692424),
             intaking3 = new EditablePose(-61, -50, 2 * PI / 3),
 
-    sample1 = new EditablePose(-51, -26.8, PI / 2),
+            sample1 = new EditablePose(-48, -26.8, PI / 2),
             sample2 = new EditablePose(-58, -27.4, PI / 2),
             sample3 = new EditablePose(-68.5, -27.8, PI / 2),
 
-    basket2 = new EditablePose(-63, -54, 1),
+            park1 = new EditablePose(-0.5 * SIZE_TILE, -2 * SIZE_TILE, PI),
+            park2 = new EditablePose(-1.5 * SIZE_TILE, -2 * SIZE_TILE, PI / 2),
+            park3 = new EditablePose(-2.5 * SIZE_TILE, -2 * SIZE_TILE, PI / 2),
+
+            snapshotPos = new EditablePose(-25, -10, toRadians(20)),
+
+            basket2 = new EditablePose(-63, -54, 1),
             basket3 = new EditablePose(-54.5, -54.5, PI / 4),
 
-    sub1 = new EditablePose(-22.5, -11, 0),
+            sub1 = new EditablePose(-22.5, -11, 0),
             sub2 = new EditablePose(sub1.x, -4, 0),
 
-    basketFromSub = new EditablePose(-59, -55, 0.765),
+            scoringFromSub = new EditablePose(-57.25, -57.25, PI/4),
 
-    aroundBeamPushing = new EditablePose(35, -30, PI / 2),
+            aroundBeamPushing = new EditablePose(35, -30, PI / 2),
 
-    chamberRight = new EditablePose(0.5 * WIDTH_ROBOT + 0.375, -33, - PI / 2),
+            chamberRight = new EditablePose(0.5 * WIDTH_ROBOT + 0.375, -33, - PI / 2),
             chamberLeft = new EditablePose(-chamberRight.x, -33, PI / 2),
 
-    pushing1 = new EditablePose(46, -13, toRadians(-80)),
+            pushing1 = new EditablePose(46, -13, toRadians(-80)),
             pushing2 = new EditablePose(57, pushing1.y, toRadians(-70)),
             pushing3 = new EditablePose(63, pushing1.y, - PI / 2),
 
-    intakingSpec = new EditablePose(36, -60, PI / 2),
+            intakingSpec = new EditablePose(36, -60, PI / 2),
 
-    pushed1 = new EditablePose(pushing1.x, -46, toRadians(110)),
+            pushed1 = new EditablePose(pushing1.x, -46, toRadians(110)),
             pushed2 = new EditablePose(pushing2.x, pushed1.y, toRadians(110)),
             pushed3 = new EditablePose(pushing3.x, intakingSpec.y, - PI / 2);
 
@@ -136,7 +142,10 @@ public class MeepMeepTesting {
                 .setStartPose(pose)
                 .build();
 
-        TrajectoryActionBuilder builder = myBot.getDrive().actionBuilder(new Pose2d(0.5 * LENGTH_ROBOT + 0.375 - 2 * SIZE_TILE, 0.5 * WIDTH_ROBOT - SIZE_HALF_FIELD, 0));
+        TrajectoryActionBuilder builder = myBot.getDrive().actionBuilder(
+//                new Pose2d(0.5 * LENGTH_ROBOT + 0.375 - 2 * SIZE_TILE, 0.5 * WIDTH_ROBOT - SIZE_HALF_FIELD, 0)
+                intaking3.toPose2d()
+        );
 
         EditablePose sub1Edited = sub1.clone(), sub2Edited = sub2.clone();
 
@@ -152,100 +161,115 @@ public class MeepMeepTesting {
                 new AngularVelConstraint(SPEED_SWEEPING_SUB_TURNING)
         ));
 
+        System.out.println(intaking1.angleTo(sample1) - intaking1.heading); // -9.73490512395 deg
+        System.out.println(intaking1.angleTo(sample2) - intaking1.heading); // -32.336758263 deg
+
+        System.out.println(intaking1.distTo(sample1));
+        System.out.println(intaking1.distTo(sample2));
+
         builder = builder
-                .strafeToLinearHeading(intaking1.toVector2d(), intaking1.heading)
-                .stopAndAdd(scoreSample())
+//                .strafeToLinearHeading(intaking1.toVector2d(), intaking1.heading)
+//                .stopAndAdd(scoreSample())
+//
+//                .afterTime(0, () -> {
+////                    robot.intake.setRollerAndAngle(SPEED_INTAKING);
+////                    robot.intake.extendo.setTarget(EXTEND_SAMPLE_1);
+////                    timer.reset();
+//                })
+////                .stopAndAdd(telemetryPacket -> !(timer.seconds() >= WAIT_EXTEND_MAX_SPIKE || robot.intake.hasSample() || robot.intake.extendo.atPosition(EXTEND_SAMPLE_1)))
+//                .setTangent(intaking1.heading)
+//                .lineToY(intaking1.y + Y_INCHING_FORWARD_WHEN_INTAKING, inchingConstraint)
+//
+//                .stopAndAdd(finishIntaking())
+//                .strafeToLinearHeading(intaking2.toVector2d(), intaking2.heading)
+//                .stopAndAdd(scoreSample())
+//
+//                .afterTime(0, () -> {
+////                    robot.intake.setRollerAndAngle(SPEED_INTAKING);
+////                    robot.intake.extendo.setTarget(EXTEND_SAMPLE_2);
+////                    timer.reset();
+//                })
+////                .stopAndAdd(telemetryPacket -> !(timer.seconds() >= WAIT_EXTEND_MAX_SPIKE || robot.intake.hasSample() || robot.intake.extendo.atPosition(EXTEND_SAMPLE_2)))
+//                .setTangent(intaking2.heading)
+//                .lineToY(intaking2.y + Y_INCHING_FORWARD_WHEN_INTAKING, inchingConstraint)
+//
+////                    .afterTime(0, preExtend(robot, PRE_EXTEND_3))
+//                .stopAndAdd(finishIntaking())
+////                    .afterTime(0, () -> robot.intake.sweeper.setActivated(true))
+//                .strafeToLinearHeading(basket2.toVector2d(), basket2.heading)
+////                    .afterTime(0, () -> robot.intake.sweeper.setActivated(false))
+//                .stopAndAdd(scoreSample())
+//
+//                .strafeToLinearHeading(intaking3.toVector2d(), intaking3.heading, spikeConstraint)
+//                .afterTime(0, () -> {
+////                    robot.intake.setRollerAndAngle(SPEED_INTAKING);
+////                    robot.intake.extendo.setTarget(EXTEND_SAMPLE_3);
+////                    timer.reset();
+//                })
+////                .stopAndAdd(telemetryPacket -> !(timer.seconds() >= WAIT_EXTEND_MAX_SPIKE || robot.intake.hasSample() || robot.intake.extendo.atPosition(EXTEND_SAMPLE_3)))
+//                .setTangent(PI / 2)
+//                .lineToY(intaking3.y + Y_INCHING_FORWARD_WHEN_INTAKING, inchingConstraint)
+//
+//                .stopAndAdd(finishIntaking())
+////                    .afterTime(0, () -> robot.intake.sweeper.setActivated(true))
+//                .strafeToLinearHeading(basket3.toVector2d(), basket3.heading)
+////                    .afterTime(0, () -> robot.intake.sweeper.setActivated(false))
+//                .stopAndAdd(scoreSample())
+//
+////                .afterTime(0, () -> robot.intake.extendo.setTarget(EXTEND_OVER_SUB_BAR_1))
+//                .afterDisp(DISTANCE_FROM_BASKET_SWEEP, sweep())
+//                .setTangent(basket3.heading)
+//                .splineTo(sub1Edited.toVector2d(), sub1Edited.heading)
+//                .stopAndAdd(approachSub())
+//
+//                .setTangent(PI / 2)
+//                .lineToY(-sub1.y, sweepConstraint)
+//
+//                .stopAndAdd(finishIntaking())
+//                .stopAndAdd(new SequentialAction(
+////                        new InstantAction(() -> robot.intake.setAngle(ANGLE_PRE_SLAM)),
+////                        new SleepAction(WAIT_PRE_SLAM_BUCKET),
+////                        new InstantAction(() -> robot.intake.setRoller(SPEED_SLAMMING)),
+////                        new InstantAction(() -> robot.intake.setAngle(ANGLE_SLAMMING)),
+////                        new SleepAction(WAIT_SLAMMING_BUCKET),
+////                        new InstantAction(() -> robot.intake.setRollerAndAngle(0))
+//                ))
+//                .setTangent(PI)
+//                .waitSeconds(WAIT_INTAKE_RETRACT_POST_SUB)
+//                .splineTo(basketFromSub.toVector2d(), PI + basketFromSub.heading)
+//                .stopAndAdd(scoreSample())
+//
+////                .afterTime(0, () -> robot.intake.extendo.setTarget(EXTEND_OVER_SUB_BAR_1))
+//                .afterDisp(DISTANCE_FROM_BASKET_SWEEP, sweep())
+//                .setTangent(basket3.heading)
+//                .splineTo(sub1Edited.toVector2d(), sub1Edited.heading)
+//                .stopAndAdd(approachSub())
+//                .strafeToLinearHeading(intaking3.toVector2d(), intaking3.heading)
+                .strafeToLinearHeading(scoringFromSub.toVector2d(), scoringFromSub.heading)
+                .setTangent(PI / 4)
+                .splineTo(avoidBarnacle1.toVector2d(), avoidBarnacle1.heading)
+                .splineTo(snapshotPos.toVector2d(), snapshotPos.heading)
 
-                .afterTime(0, () -> {
-//                    robot.intake.setRollerAndAngle(SPEED_INTAKING);
-//                    robot.intake.extendo.setTarget(EXTEND_SAMPLE_1);
-//                    timer.reset();
-                })
-//                .stopAndAdd(telemetryPacket -> !(timer.seconds() >= WAIT_EXTEND_MAX_SPIKE || robot.intake.hasSample() || robot.intake.extendo.atPosition(EXTEND_SAMPLE_1)))
-                .setTangent(intaking1.heading)
-                .lineToY(intaking1.y + Y_INCHING_FORWARD_WHEN_INTAKING, inchingConstraint)
-
-                .stopAndAdd(finishIntaking())
-                .strafeToLinearHeading(intaking2.toVector2d(), intaking2.heading)
-                .stopAndAdd(scoreSample())
-
-                .afterTime(0, () -> {
-//                    robot.intake.setRollerAndAngle(SPEED_INTAKING);
-//                    robot.intake.extendo.setTarget(EXTEND_SAMPLE_2);
-//                    timer.reset();
-                })
-//                .stopAndAdd(telemetryPacket -> !(timer.seconds() >= WAIT_EXTEND_MAX_SPIKE || robot.intake.hasSample() || robot.intake.extendo.atPosition(EXTEND_SAMPLE_2)))
-                .setTangent(intaking2.heading)
-                .lineToY(intaking2.y + Y_INCHING_FORWARD_WHEN_INTAKING, inchingConstraint)
-
-//                    .afterTime(0, preExtend(robot, PRE_EXTEND_3))
-                .stopAndAdd(finishIntaking())
-//                    .afterTime(0, () -> robot.intake.sweeper.setActivated(true))
-                .strafeToLinearHeading(basket2.toVector2d(), basket2.heading)
-//                    .afterTime(0, () -> robot.intake.sweeper.setActivated(false))
-                .stopAndAdd(scoreSample())
-
-                .strafeToLinearHeading(intaking3.toVector2d(), intaking3.heading, spikeConstraint)
-                .afterTime(0, () -> {
-//                    robot.intake.setRollerAndAngle(SPEED_INTAKING);
-//                    robot.intake.extendo.setTarget(EXTEND_SAMPLE_3);
-//                    timer.reset();
-                })
-//                .stopAndAdd(telemetryPacket -> !(timer.seconds() >= WAIT_EXTEND_MAX_SPIKE || robot.intake.hasSample() || robot.intake.extendo.atPosition(EXTEND_SAMPLE_3)))
                 .setTangent(PI / 2)
-                .lineToY(intaking3.y + Y_INCHING_FORWARD_WHEN_INTAKING, inchingConstraint)
+                .strafeToSplineHeading(snapshotPos.toVector2d(), snapshotPos.heading)
 
-                .stopAndAdd(finishIntaking())
-//                    .afterTime(0, () -> robot.intake.sweeper.setActivated(true))
-                .strafeToLinearHeading(basket3.toVector2d(), basket3.heading)
-//                    .afterTime(0, () -> robot.intake.sweeper.setActivated(false))
-                .stopAndAdd(scoreSample())
-
-//                .afterTime(0, () -> robot.intake.extendo.setTarget(EXTEND_OVER_SUB_BAR_1))
-                .afterDisp(DISTANCE_FROM_BASKET_SWEEP, sweep())
-                .setTangent(basket3.heading)
-                .splineTo(sub1Edited.toVector2d(), sub1Edited.heading)
-                .stopAndAdd(approachSub())
-
-                .setTangent(PI / 2)
-                .lineToY(-sub1.y, sweepConstraint)
-
-                .stopAndAdd(finishIntaking())
-                .stopAndAdd(new SequentialAction(
-//                        new InstantAction(() -> robot.intake.setAngle(ANGLE_PRE_SLAM)),
-//                        new SleepAction(WAIT_PRE_SLAM_BUCKET),
-//                        new InstantAction(() -> robot.intake.setRoller(SPEED_SLAMMING)),
-//                        new InstantAction(() -> robot.intake.setAngle(ANGLE_SLAMMING)),
-//                        new SleepAction(WAIT_SLAMMING_BUCKET),
-//                        new InstantAction(() -> robot.intake.setRollerAndAngle(0))
-                ))
-                .setTangent(PI)
-                .waitSeconds(WAIT_INTAKE_RETRACT_POST_SUB)
-                .splineTo(basketFromSub.toVector2d(), PI + basketFromSub.heading)
-                .stopAndAdd(scoreSample())
-
-//                .afterTime(0, () -> robot.intake.extendo.setTarget(EXTEND_OVER_SUB_BAR_1))
-                .afterDisp(DISTANCE_FROM_BASKET_SWEEP, sweep())
-                .setTangent(basket3.heading)
-                .splineTo(sub1Edited.toVector2d(), sub1Edited.heading)
-                .stopAndAdd(approachSub())
-
-                .setTangent(PI / 2)
-                .lineToY(-sub1.y, sweepConstraint)
-
-                .stopAndAdd(finishIntaking())
-                .stopAndAdd(new SequentialAction(
-//                        new InstantAction(() -> robot.intake.setAngle(ANGLE_PRE_SLAM)),
-//                        new SleepAction(WAIT_PRE_SLAM_BUCKET),
-//                        new InstantAction(() -> robot.intake.setRoller(SPEED_SLAMMING)),
-//                        new InstantAction(() -> robot.intake.setAngle(ANGLE_SLAMMING)),
-//                        new SleepAction(WAIT_SLAMMING_BUCKET),
-//                        new InstantAction(() -> robot.intake.setRollerAndAngle(0))
-                ))
-                .setTangent(PI)
-                .waitSeconds(WAIT_INTAKE_RETRACT_POST_SUB)
-                .splineTo(basketFromSub.toVector2d(), PI + basketFromSub.heading)
-                .stopAndAdd(scoreSample())
+//                .stopAndAdd(finishIntaking())
+//                .stopAndAdd(new SequentialAction(
+////                        new InstantAction(() -> robot.intake.setAngle(ANGLE_PRE_SLAM)),
+////                        new SleepAction(WAIT_PRE_SLAM_BUCKET),
+////                        new InstantAction(() -> robot.intake.setRoller(SPEED_SLAMMING)),
+////                        new InstantAction(() -> robot.intake.setAngle(ANGLE_SLAMMING)),
+////                        new SleepAction(WAIT_SLAMMING_BUCKET),
+////                        new InstantAction(() -> robot.intake.setRollerAndAngle(0))
+//                ))
+                .setTangent(PI + snapshotPos.heading)
+//                .waitSeconds(WAIT_INTAKE_RETRACT_POST_SUB)
+                .splineTo(scoringFromSub.toVector2d(), PI + scoringFromSub.heading)
+//                .stopAndAdd(scoreSample())
+//                .strafeToLinearHeading(park3.toVector2d(), park1.heading)
+                .setTangent(scoringFromSub.heading)
+                .splineTo(park1.toVector2d(), 0)
+//                .strafeTo(park1.toVector2d())
                 ;
 
 

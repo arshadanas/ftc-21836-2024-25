@@ -6,4 +6,5 @@ public enum Sample {
     NEUTRAL,
     BLUE,
     RED,
+    BARNACLE,
 }

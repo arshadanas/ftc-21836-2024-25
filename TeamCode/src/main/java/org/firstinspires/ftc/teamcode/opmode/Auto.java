@@ -5,7 +5,8 @@ import static com.arcrobotics.ftclib.gamepad.GamepadKeys.Button.DPAD_DOWN;
 import static com.arcrobotics.ftclib.gamepad.GamepadKeys.Button.DPAD_UP;
 import static com.arcrobotics.ftclib.gamepad.GamepadKeys.Button.X;
 import static com.arcrobotics.ftclib.gamepad.GamepadKeys.Button.Y;
-import static org.firstinspires.ftc.teamcode.control.vision.AutoSampleAligner.LL_TURN_MULTIPLIER;
+import static org.firstinspires.ftc.teamcode.control.vision.detector.SampleDetector.Pipeline.YELLOW_BLUE;
+import static org.firstinspires.ftc.teamcode.control.vision.detector.SampleDetector.Pipeline.YELLOW_RED;
 import static org.firstinspires.ftc.teamcode.control.vision.pipeline.Sample.NEUTRAL;
 import static org.firstinspires.ftc.teamcode.opmode.Auto.AutonConfig.CONFIRMING;
 import static org.firstinspires.ftc.teamcode.opmode.Auto.AutonConfig.EDITING_ALLIANCE;
@@ -40,18 +41,16 @@ import com.acmerobotics.roadrunner.Action;
 import com.acmerobotics.roadrunner.AngularVelConstraint;
 import com.acmerobotics.roadrunner.InstantAction;
 import com.acmerobotics.roadrunner.MinVelConstraint;
+import com.acmerobotics.roadrunner.NullAction;
 import com.acmerobotics.roadrunner.ParallelAction;
 import com.acmerobotics.roadrunner.Pose2d;
-import com.acmerobotics.roadrunner.PoseVelocity2d;
 import com.acmerobotics.roadrunner.SequentialAction;
 import com.acmerobotics.roadrunner.SleepAction;
 import com.acmerobotics.roadrunner.TrajectoryActionBuilder;
 import com.acmerobotics.roadrunner.TranslationalVelConstraint;
-import com.acmerobotics.roadrunner.TurnConstraints;
 import com.acmerobotics.roadrunner.Vector2d;
 import com.acmerobotics.roadrunner.ftc.Actions;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
-import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.util.ElapsedTime;
@@ -59,10 +58,8 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.control.FirstTerminateAction;
 import org.firstinspires.ftc.teamcode.control.motion.EditablePose;
-import org.firstinspires.ftc.teamcode.roadrunner.MecanumDrive;
-import org.firstinspires.ftc.teamcode.control.vision.AutoSampleAligner;
+import org.firstinspires.ftc.teamcode.control.vision.detector.SampleDetector;
 import org.firstinspires.ftc.teamcode.subsystem.Deposit;
-import org.firstinspires.ftc.teamcode.control.vision.LimelightEx;
 import org.firstinspires.ftc.teamcode.subsystem.Robot;
 import org.firstinspires.ftc.teamcode.subsystem.utility.cachedhardware.CachedDcMotorEx;
 
@@ -104,15 +101,16 @@ public final class Auto extends LinearOpMode {
             SIZE_TILE = 23.625,
             DISTANCE_BETWEEN_SPECIMENS = 2,
 
+            WAIT_BARNACLE_DETECT = 0.5,
+
             LL_ANGLE_BUCKET_INCREMENT = 50,
             LL_DISTANCE_START_LOWERING = 13,
             LL_EXTEND_OFFSET = -9.5,
             LL_MAX_PICTURE_TIME = 3,
-            LL_MIN_PICTURE_TIME = 0,
-            LL_NO_DETECTION_Y_MOVE = 3,
+            LL_MIN_PICTURE_TIME = 0.5,
             LL_SPEED_MAX_EXTENDO = 1,
-            LL_SWEEP_ANGLE_RANGE = 10,
             LL_SWEEP_SPEED = 0.5,
+            LL_TURN_MULTIPLIER = 1.25,
             LL_WAIT_INTAKE = 1,
 
             WAIT_MAX_INTAKE = 1,
@@ -124,9 +122,7 @@ public final class Auto extends LinearOpMode {
             EXTEND_SAMPLE_2 = 20,
             EXTEND_SAMPLE_3 = 24,
 
-            PRE_EXTEND_SAMPLE_1 = 12.5,
-            PRE_EXTEND_SAMPLE_2 = 12,
-            PRE_EXTEND_SAMPLE_3 = 12,
+            PRE_EXTEND = 12,
 
             VEL_INCHING = 5,
             VEL_ANG_INCHING = 0.75,
@@ -156,7 +152,6 @@ public final class Auto extends LinearOpMode {
             WAIT_BEFORE_EXTENDING_FROM_SUB = 1,
             WAIT_EXTEND_MAX_SPEC_INTAKE = 2,
             WAIT_EXTEND_MAX_DELIVERY = 2,
-            WAIT_AFTER_INTAKING_SPEC_3_TO_DELIVERY = 1,
 
             EXTEND_SUB_DELIVERY = 20,
             PRE_EXTEND_SPEC_1 = 12,
@@ -168,16 +163,18 @@ public final class Auto extends LinearOpMode {
 
             Y_INCHING_FORWARD_WHEN_INTAKING = 10,
 
-            TIME_CYCLE = 3;
+            TIME_CYCLE = 5.5,
+            TIME_PARK = 2.5,
+
+            DEG_SPIKE_1 = 8.16,
+            DEG_CENTER = -1.83,
+            DEG_SPIKE_2 = -12.17;
 
     /// <a href="https:///www.desmos.com/calculator/l8pl2gf1mb">Adjust spikes 1 and 2</a>
     /// <a href="https://www.desmos.com/calculator/sishohvpwc">Visualize spike samples</a>
     public static EditablePose
             admissibleError = new EditablePose(1, 1, 0.05),
             admissibleVel = new EditablePose(25, 25, toRadians(30)),
-
-            basketError = new EditablePose(1, 1, toRadians(4)),
-            basketVelError = new EditablePose(12, 12, toRadians(30)),
 
             intaking1 = new EditablePose(-61, -54, PI/3),
             intaking2 = new EditablePose(-62, -51.5, 1.4632986527692424),
@@ -188,13 +185,15 @@ public final class Auto extends LinearOpMode {
             scoring = new EditablePose(-56, -56, PI / 4),
             scoringFromSub = new EditablePose(-57.25, -57.25, PI/4),
 
+            avoidBarnacle1 = new EditablePose(-1.5 * SIZE_TILE, -SIZE_TILE - 1.75, PI / 2.5),
+
             sample1 = new EditablePose(-48, -26.8, PI / 2),
             sample2 = new EditablePose(-60, -27.4, PI / 2),
             sample3 = new EditablePose(-69, -27.8, PI / 2),
 
-            sub = new EditablePose(-22.5, -11, 0),
-
-            aroundBeamPushing = new EditablePose(35, -30, PI / 2),
+            park1 = new EditablePose(-0.5 * SIZE_TILE, -2 * SIZE_TILE, PI),
+            park2 = new EditablePose(-1.5 * SIZE_TILE, -2 * SIZE_TILE, PI / 2),
+            park3 = new EditablePose(-2.5 * SIZE_TILE, -2 * SIZE_TILE, PI / 2),
 
             chamberRight = new EditablePose(0.5 * WIDTH_ROBOT + 0.375, -33, PI / 2),
 
@@ -208,9 +207,7 @@ public final class Auto extends LinearOpMode {
 
             deliveryPos = new EditablePose(36, -50, 0),
 
-            intakingSpec = new EditablePose(36, -60, PI / 2),
-
-            targetOffset = new EditablePose(0 ,0, 0);
+            intakingSpec = new EditablePose(36, -60, PI / 2);
 
     static Pose2d pose = new Pose2d(0,0, 0.5 * PI);
     static boolean isRedAlliance = false;
@@ -297,15 +294,13 @@ public final class Auto extends LinearOpMode {
             printConfig(false, timer.seconds(), selection, specimenSide, cycles);
         }
 
-        Limelight3A limelight3a = hardwareMap.get(Limelight3A.class, "limelight");
-        AutoSampleAligner sampleAligner = new AutoSampleAligner(new LimelightEx(limelight3a, hardwareMap));
-        sampleAligner.activateLimelight(
+        SampleDetector sampleDetector = new SampleDetector(hardwareMap);
+        sampleDetector.setPipeline(
                 specimenSide ?
-                /*specimen*/ isRedAlliance ? AutoSampleAligner.Pipeline.RED : AutoSampleAligner.Pipeline.BLUE :
-                /*sample*/   isRedAlliance ? AutoSampleAligner.Pipeline.YELLOW_RED : AutoSampleAligner.Pipeline.YELLOW_BLUE
+                /*specimen*/ isRedAlliance ? SampleDetector.Pipeline.RED : SampleDetector.Pipeline.BLUE :
+                /*sample*/   isRedAlliance ? YELLOW_RED : YELLOW_BLUE
+//                SampleDetector.Pipeline.BLUE_RED
         );
-        limelight3a.stop();
-        limelight3a.start();
 
         robot.intake.setAlliance(isRedAlliance);
 
@@ -351,9 +346,7 @@ public final class Auto extends LinearOpMode {
             Action intake1 = robot.drivetrain.actionBuilder(new Pose2d(specIntaking1.toVector2d(), specIntaking1.angleTo(deliveryPos)))
                     .stopAndAdd(() -> robot.intake.extendo.setTarget(PRE_EXTEND_SPEC_1))
                     .turnTo(specIntaking1.heading)
-                    .stopAndAdd(() -> {
-                        robot.intake.extendo.setTarget(EXTEND_SPEC_1);
-                    })
+                    .stopAndAdd(() -> robot.intake.extendo.setTarget(EXTEND_SPEC_1))
                     .stopAndAdd(new FirstTerminateAction(
                             t -> !(robot.intake.hasSample() || robot.intake.extendo.atPosition(EXTEND_SPEC_1)),
                             new SleepAction(WAIT_EXTEND_MAX_SPEC_INTAKE)
@@ -362,9 +355,7 @@ public final class Auto extends LinearOpMode {
                     .build();
 
             Action deliver1 = robot.drivetrain.actionBuilder(specIntaking1.toPose2d())
-                    .stopAndAdd(() -> {
-                        robot.intake.extendo.setTarget(PRE_EXTEND_SPEC_2);
-                    })
+                    .stopAndAdd(() -> robot.intake.extendo.setTarget(PRE_EXTEND_SPEC_2))
                     .strafeToLinearHeading(specIntaking2.toVector2d(), specIntaking2.angleTo(deliveryPos))
                     .stopAndAdd(new FirstTerminateAction(
                             t -> !robot.intake.extendo.atPosition(PRE_EXTEND_SPEC_2),
@@ -387,9 +378,7 @@ public final class Auto extends LinearOpMode {
                     .build();
 
             Action deliver2 = robot.drivetrain.actionBuilder(specIntaking2.toPose2d())
-                    .stopAndAdd(() -> {
-                        robot.intake.extendo.setTarget(PRE_EXTEND_SPEC_3);
-                    })
+                    .stopAndAdd(() -> robot.intake.extendo.setTarget(PRE_EXTEND_SPEC_3))
                     .strafeToLinearHeading(specIntaking3.toVector2d(), specIntaking3.angleTo(deliveryPos))
                     .stopAndAdd(new FirstTerminateAction(
                             t -> !robot.intake.extendo.atPosition(PRE_EXTEND_SPEC_3),
@@ -415,9 +404,7 @@ public final class Auto extends LinearOpMode {
                     .build();
 
             TrajectoryActionBuilder builder = robot.drivetrain.actionBuilder(specIntaking2.toPose2d())
-                    .stopAndAdd(() -> {
-                        robot.intake.extendo.setTarget(PRE_EXTEND_SPEC_3);
-                    })
+                    .stopAndAdd(() -> robot.intake.extendo.setTarget(PRE_EXTEND_SPEC_3))
                     .turnTo(specIntaking3.angleTo(deliveryPos))
                     .stopAndAdd(new FirstTerminateAction(
                             t -> !robot.intake.extendo.atPosition(PRE_EXTEND_SPEC_3),
@@ -468,8 +455,6 @@ public final class Auto extends LinearOpMode {
 
                 State state = SCORING_PRELOAD;
 
-                Action snapshotAction = null;
-
                 ElapsedTime matchTimer = null;
 
                 Action activeTraj = scorePreload;
@@ -483,7 +468,7 @@ public final class Auto extends LinearOpMode {
                 public boolean run(@NonNull TelemetryPacket p) {
                     if (matchTimer == null) matchTimer = new ElapsedTime();
 
-                    double remaining = (30 - DEAD_TIME) - matchTimer.seconds();
+//                    double remaining = (30 - DEAD_TIME) - matchTimer.seconds();
 
                     boolean trajDone = !activeTraj.run(p);
 
@@ -493,25 +478,26 @@ public final class Auto extends LinearOpMode {
                             if (trajDone) {
                                 state = TAKING_PICTURE;
                                 timer.reset();
-                                snapshotAction = sampleAligner.detectTarget(LL_MAX_PICTURE_TIME);
+                                sampleDetector.detections.clear();
+                                activeTraj = new SequentialAction(
+                                        new SleepAction(LL_MIN_PICTURE_TIME),
+                                        new FirstTerminateAction(
+                                                t -> !sampleDetector.run(),
+                                                new SleepAction(LL_MAX_PICTURE_TIME)
+                                        )
+                                );
                             }
                             break;
                         case TAKING_PICTURE:
-                            snapshotAction.run(p);
 
-                            if (timer.seconds() < LL_MIN_PICTURE_TIME) break;
+                            if (!sampleDetector.detections.isEmpty()) {
 
-                            EditablePose offset = new EditablePose(sampleAligner.getTargetOffset());
-
-                            if (!(offset.x == 0 && offset.y == 0 && offset.heading == 0)) {
-
-                                targetOffset = offset;
-                                double extendoInches = hypot(targetOffset.x, targetOffset.y) + LL_EXTEND_OFFSET;
+                                double extendoInches = hypot(sampleDetector.offsetToSample.x, sampleDetector.offsetToSample.y) + LL_EXTEND_OFFSET;
 
                                 robot.intake.extendo.powerCap = LL_SPEED_MAX_EXTENDO;
 
                                 activeTraj = robot.drivetrain.actionBuilder(robot.drivetrain.pose)
-                                        .turn(-targetOffset.heading * LL_TURN_MULTIPLIER)
+                                        .turn(-sampleDetector.offsetToSample.heading * LL_TURN_MULTIPLIER)
                                         .stopAndAdd(() -> {
                                             robot.intake.extendo.setTarget(extendoInches);
                                             robot.intake.setAngle(0.01);
@@ -529,7 +515,7 @@ public final class Auto extends LinearOpMode {
 
                                 state = SUB_INTAKING;
 
-                            } else if (timer.seconds() > LL_MAX_PICTURE_TIME) searchAgainForSample(robot);
+                            } else if (trajDone) searchAgainForSample(robot);
 
                             break;
 
@@ -537,7 +523,6 @@ public final class Auto extends LinearOpMode {
 
                             if (robot.hasSample()) {
                                 robot.headlight.setActivated(false);
-                                Pose2d current = robot.drivetrain.pose;
 
                                 robot.intake.extendo.powerCap = 1;
 
@@ -665,8 +650,6 @@ public final class Auto extends LinearOpMode {
 
             pose = new Pose2d(0.5 * LENGTH_ROBOT + 0.375 - 2 * SIZE_TILE, 0.5 * WIDTH_ROBOT - SIZE_HALF_FIELD, 0);
 
-            TurnConstraints llSweepConstraint = new TurnConstraints(LL_SWEEP_SPEED, -MecanumDrive.PARAMS.maxAngAccel, MecanumDrive.PARAMS.maxAngAccel);
-
             MinVelConstraint inchingConstraint = new MinVelConstraint(Arrays.asList(
                     new TranslationalVelConstraint(VEL_INCHING),
                     new AngularVelConstraint(VEL_ANG_INCHING)
@@ -676,25 +659,31 @@ public final class Auto extends LinearOpMode {
 
             // wait until deposit in position
             Action scorePreload = robot.drivetrain.actionBuilder(pose)
-                    .afterTime(0, preExtend(robot, PRE_EXTEND_SAMPLE_1))
+//                    .afterTime(0, preExtend(robot))
                     .afterTime(WAIT_BEFORE_SCORING_PRELOAD, scoreSample(robot))
-                    .strafeToLinearHeading(intaking1.toVector2d(), intaking1.heading)
+                    .strafeToLinearHeading(intaking2.toVector2d(), intaking2.heading)
+                    .waitSeconds(WAIT_BARNACLE_DETECT)
                     .build();
 
             Action intake1 = new SequentialAction(
+                    robot.drivetrain.actionBuilder(intaking2.toPose2d())
+                            .afterTime(0, preExtend(robot))
+                            .strafeToLinearHeading(intaking1.toVector2d(), intaking1.heading)
+                            .build(),
                     new InstantAction(() -> {
                         robot.intake.setRollerAndAngle(1);
                         robot.intake.extendo.setTarget(EXTEND_SAMPLE_1);
                     }),
                     new FirstTerminateAction(
-                            t -> !(robot.intake.hasSample() || robot.intake.extendo.atPosition(EXTEND_SAMPLE_1)),
+                            t -> !robot.intake.extendo.atPosition(EXTEND_SAMPLE_1),
+                            t -> !robot.intake.hasSample(),
                             new SleepAction(WAIT_EXTEND_MAX_SPIKE)
                     ),
                     new SleepAction(WAIT_MAX_INTAKE)
             );
 
             Action score1 = robot.drivetrain.actionBuilder(intaking1.toPose2d())
-                    .afterTime(0, preExtend(robot, PRE_EXTEND_SAMPLE_2))
+                    .afterTime(0, preExtend(robot))
                     .strafeToLinearHeading(intaking2.toVector2d(), intaking2.heading)
                     .stopAndAdd(scoreSample(robot))
                     .build();
@@ -705,15 +694,11 @@ public final class Auto extends LinearOpMode {
                         robot.intake.extendo.setTarget(EXTEND_SAMPLE_2);
                     }),
                     new FirstTerminateAction(
-                            t -> !(robot.intake.hasSample() || robot.intake.extendo.atPosition(EXTEND_SAMPLE_2)),
+                            t -> !robot.intake.extendo.atPosition(EXTEND_SAMPLE_2),
+                            t -> !robot.intake.hasSample(),
                             new SleepAction(WAIT_EXTEND_MAX_SPIKE)
                     ),
                     new SleepAction(WAIT_MAX_INTAKE)
-            );
-
-            Action score2 = new ParallelAction(
-                    preExtend(robot, PRE_EXTEND_SAMPLE_3),
-                    scoreSample(robot)
             );
 
             Action intake3 = robot.drivetrain.actionBuilder(intaking2.toPose2d())
@@ -723,35 +708,23 @@ public final class Auto extends LinearOpMode {
                         robot.intake.extendo.setTarget(EXTEND_SAMPLE_3);
                     })
                     .stopAndAdd(new FirstTerminateAction(
-                            telemetryPacket -> !(robot.intake.hasSample() || robot.intake.extendo.atPosition(EXTEND_SAMPLE_3)),
+                            t -> !robot.intake.extendo.atPosition(EXTEND_SAMPLE_3),
+                            t -> !robot.intake.hasSample(),
                             new SleepAction(WAIT_EXTEND_MAX_SPIKE)
                     ))
                     .setTangent(PI / 2)
                     .lineToY(intaking3.y + Y_INCHING_FORWARD_WHEN_INTAKING, inchingConstraint)
                     .build();
 
-            Action score3 = robot.drivetrain.actionBuilder(intaking3.toPose2d())
-                    .stopAndAdd(new InstantAction(() -> robot.intake.setRollerAndAngle(0)))
-                    .strafeToLinearHeading(intaking2.toVector2d(), intaking2.heading)
-                    .stopAndAdd(scoreSample(robot))
-                    .build();
-
-            Action park = robot.drivetrain.actionBuilder(scoring.toPose2d())
-                    .afterTime(0, () -> robot.deposit.lift.setTarget(0))
-                    .splineTo(sub.toVector2d(), sub.heading)
-                    .build();
-
             trajectory = new Action() {
 
                 State state = SCORING_PRELOAD;
-
-                Action snapshotAction = null;
 
                 ElapsedTime matchTimer = null;
 
                 Action activeTraj = scorePreload;
 
-                int subCycle = 1;
+                int subCycle = 1, barnacle = 0;
 
                 void stopDt() {
                     for (CachedDcMotorEx motor : dtMotors) motor.setPower(0);
@@ -767,12 +740,29 @@ public final class Auto extends LinearOpMode {
                     switch (state) {
                         case SCORING_PRELOAD:
 
-                            if (trajDone
-//                                    || atPose(robot, intaking1) && !robot.hasSample()
-                            ) {
+//                            sampleDetector.run();
+
+                            if (trajDone) {
+
+//                                if (!sampleDetector.detections.isEmpty()) {
+//                                    double degMinSpike1 = (DEG_CENTER + DEG_SPIKE_1) / 2;
+//                                    double degMaxSpike2 = (DEG_SPIKE_2 + DEG_CENTER) / 2;
+//                                    barnacle =
+//                                            sampleDetector.xDegFromLens > degMinSpike1 ? 2 :
+//                                            sampleDetector.xDegFromLens < degMaxSpike2 ? 1 :
+//                                                                                         3;
+//                                }
+//
+//                                sampleDetector.setPipeline(isRedAlliance ? YELLOW_RED : YELLOW_BLUE);
                                 stopDt();
-                                activeTraj = intake1;
-                                state = INTAKING_1;
+
+                                if (barnacle == 1) {
+                                    activeTraj = intake2;
+                                    state = INTAKING_2;
+                                } else {
+                                    activeTraj = intake1;
+                                    state = INTAKING_1;
+                                }
                             }
                             break;
 
@@ -794,7 +784,8 @@ public final class Auto extends LinearOpMode {
                                             robot.intake.extendo.setTarget(EXTEND_SAMPLE_2);
                                         })
                                         .stopAndAdd(new FirstTerminateAction(
-                                                telemetryPacket -> !(robot.intake.hasSample() || robot.intake.extendo.atPosition(EXTEND_SAMPLE_2)),
+                                                t -> !robot.intake.extendo.atPosition(EXTEND_SAMPLE_2),
+                                                t -> !robot.intake.hasSample(),
                                                 new SleepAction(WAIT_EXTEND_MAX_SPIKE)
                                         ))
                                         .waitSeconds(WAIT_MAX_INTAKE)
@@ -810,8 +801,13 @@ public final class Auto extends LinearOpMode {
 
                         case SCORING_1:
                             if (trajDone) {
-                                activeTraj = intake2;
-                                state = INTAKING_2;
+                                if (barnacle == 2) {
+                                    activeTraj = intake3;
+                                    state = INTAKING_3;
+                                } else {
+                                    activeTraj = intake2;
+                                    state = INTAKING_2;
+                                }
                             }
                             break;
                         case INTAKING_2:
@@ -819,7 +815,10 @@ public final class Auto extends LinearOpMode {
                             // Sample intaked
                             if (robot.intake.hasSample()) {
                                 robot.intake.setRollerAndAngle(0);
-                                activeTraj = score2;
+                                activeTraj = new ParallelAction(
+                                        barnacle == 3 ? new NullAction() : preExtend(robot),
+                                        scoreSample(robot)
+                                );
                                 state = SCORING_2;
                                 stopDt();
                             }
@@ -831,7 +830,8 @@ public final class Auto extends LinearOpMode {
                                             robot.intake.extendo.setTarget(EXTEND_SAMPLE_3);
                                         })
                                         .stopAndAdd(new FirstTerminateAction(
-                                                telemetryPacket -> !(robot.intake.hasSample() || robot.intake.extendo.atPosition(EXTEND_SAMPLE_3)),
+                                                t -> !robot.intake.extendo.atPosition(EXTEND_SAMPLE_3),
+                                                t -> !robot.intake.hasSample(),
                                                 new SleepAction(WAIT_EXTEND_MAX_SPIKE)
                                         ))
                                         .setTangent(intaking3.heading)
@@ -846,8 +846,18 @@ public final class Auto extends LinearOpMode {
 
                         case SCORING_2:
                             if (trajDone) {
-                                activeTraj = intake3;
-                                state = INTAKING_3;
+
+                                if (barnacle == 3) {
+                                    Pose2d current = robot.drivetrain.pose;
+                                    activeTraj = robot.drivetrain.actionBuilder(current)
+                                            .setTangent(current.heading.toDouble())
+                                            .splineTo(snapshotPos.toVector2d(), snapshotPos.heading)
+                                            .build();
+                                    state = DRIVING_TO_SUB;
+                                } else {
+                                    activeTraj = intake3;
+                                    state = INTAKING_3;
+                                }
                             }
                             break;
                         case INTAKING_3:
@@ -855,15 +865,38 @@ public final class Auto extends LinearOpMode {
                             // Sample intaked
                             if (robot.intake.hasSample()) {
                                 robot.intake.setRollerAndAngle(0);
-                                activeTraj = score3;
+                                activeTraj = barnacle == 1 || barnacle == 2 ?
+                                        robot.drivetrain.actionBuilder(intaking3.toPose2d())
+                                                .stopAndAdd(new InstantAction(() -> robot.intake.setRollerAndAngle(0)))
+                                                .strafeToLinearHeading(scoringFromSub.toVector2d(), scoringFromSub.heading)
+                                                .stopAndAdd(scoreSample(robot))
+                                                .build() :
+                                        robot.drivetrain.actionBuilder(intaking3.toPose2d())
+                                                .stopAndAdd(new InstantAction(() -> robot.intake.setRollerAndAngle(0)))
+                                                .strafeToLinearHeading(intaking2.toVector2d(), intaking2.heading)
+                                                .stopAndAdd(scoreSample(robot))
+                                                .build();
                                 state = SCORING;
                                 stopDt();
                             }
                             else if (trajDone) { // skip to sub if didn't get 3
-                                activeTraj = robot.drivetrain.actionBuilder(intaking3.toPose2d())
-                                        .setTangent(scoring.heading)
-                                        .splineToSplineHeading(snapshotPos.toPose2d(), snapshotPos.heading)
-                                        .build();
+                                activeTraj = barnacle == 1 ?
+                                        robot.drivetrain.actionBuilder(intaking3.toPose2d())
+                                                .strafeToLinearHeading(scoringFromSub.toVector2d(), scoringFromSub.heading)
+                                                .setTangent(scoringFromSub.heading)
+                                                .splineTo(avoidBarnacle1.toVector2d(), avoidBarnacle1.heading)
+                                                .splineTo(snapshotPos.toVector2d(), snapshotPos.heading)
+                                                .build() :
+                                        barnacle == 2 ?
+                                        robot.drivetrain.actionBuilder(intaking3.toPose2d())
+                                                .strafeToLinearHeading(scoringFromSub.toVector2d(), scoringFromSub.heading)
+                                                .setTangent(scoringFromSub.heading)
+                                                .splineTo(snapshotPos.toVector2d(), snapshotPos.heading)
+                                                .build() :
+                                        robot.drivetrain.actionBuilder(intaking3.toPose2d())
+                                                .setTangent(PI / 4)
+                                                .splineToSplineHeading(snapshotPos.toPose2d(), snapshotPos.heading)
+                                                .build();
                                 state = DRIVING_TO_SUB;
                                 robot.intake.setRollerAndAngle(0);
                                 robot.intake.ejectSample();
@@ -874,16 +907,30 @@ public final class Auto extends LinearOpMode {
 
                         case SCORING:
                             if (trajDone) {
+                                Pose2d current = robot.drivetrain.pose;
                                 if (remaining < TIME_CYCLE) {
-                                    activeTraj = park;
+
+                                    activeTraj = barnacle == 1 ?
+                                            robot.drivetrain.actionBuilder(current)
+                                                            .setTangent(current.heading)
+                                                            .splineTo(park1.toVector2d(), 0)
+                                                            .build():
+                                            robot.drivetrain.actionBuilder(current)
+                                                    .strafeToLinearHeading((barnacle == 2 ? park2 : park3).toVector2d(), park2.heading)
+                                                    .build();
                                     state = PARKING;
                                     stopDt();
                                 } else {
-                                    Pose2d current = robot.drivetrain.pose;
-                                    activeTraj = robot.drivetrain.actionBuilder(current)
-                                            .setTangent(current.heading.toDouble())
-                                            .splineTo(snapshotPos.toVector2d(), snapshotPos.heading)
-                                            .build();
+                                    activeTraj = barnacle == 1 ?
+                                            robot.drivetrain.actionBuilder(current)
+                                                    .setTangent(current.heading.toDouble())
+                                                    .splineTo(avoidBarnacle1.toVector2d(), avoidBarnacle1.heading)
+                                                    .splineTo(snapshotPos.toVector2d(), snapshotPos.heading)
+                                                    .build() :
+                                            robot.drivetrain.actionBuilder(current)
+                                                    .setTangent(current.heading.toDouble())
+                                                    .splineTo(snapshotPos.toVector2d(), snapshotPos.heading)
+                                                    .build();
                                     state = DRIVING_TO_SUB;
                                 }
                             }
@@ -894,25 +941,27 @@ public final class Auto extends LinearOpMode {
                             if (trajDone) {
                                 state = TAKING_PICTURE;
                                 timer.reset();
-                                snapshotAction = sampleAligner.detectTarget(LL_MAX_PICTURE_TIME);
+                                sampleDetector.detections.clear();
+                                activeTraj = new SequentialAction(
+                                        new SleepAction(LL_MIN_PICTURE_TIME),
+                                        new FirstTerminateAction(
+                                                t -> !sampleDetector.run(),
+                                                new SleepAction(LL_MAX_PICTURE_TIME)
+                                        )
+                                );
                             }
                             break;
                         case TAKING_PICTURE:
-                            snapshotAction.run(p);
 
-                            if (timer.seconds() < LL_MIN_PICTURE_TIME) break;
+                            if (remaining < TIME_PARK) barnaclePark();
+                            else if (!sampleDetector.detections.isEmpty()) {
 
-                            EditablePose offset = new EditablePose(sampleAligner.getTargetOffset());
-
-                            if (!(offset.x == 0 && offset.y == 0 && offset.heading == 0)) {
-
-                                targetOffset = offset;
-                                double extendoInches = hypot(targetOffset.x, targetOffset.y) + LL_EXTEND_OFFSET;
+                                double extendoInches = hypot(sampleDetector.offsetToSample.x, sampleDetector.offsetToSample.y) + LL_EXTEND_OFFSET;
 
                                 robot.intake.extendo.powerCap = LL_SPEED_MAX_EXTENDO;
 
                                 activeTraj = robot.drivetrain.actionBuilder(robot.drivetrain.pose)
-                                        .turn(-targetOffset.heading * LL_TURN_MULTIPLIER)
+                                        .turn(-sampleDetector.offsetToSample.heading * LL_TURN_MULTIPLIER)
                                         .stopAndAdd(() -> {
                                             robot.intake.extendo.setTarget(extendoInches);
                                             robot.intake.setAngle(0.01);
@@ -930,14 +979,15 @@ public final class Auto extends LinearOpMode {
 
                                 state = SUB_INTAKING;
 
-                            } else if (timer.seconds() > LL_MAX_PICTURE_TIME) searchAgainForSample(robot);
+                            } else if (trajDone) searchAgainForSample(robot);
 
                             break;
 
                         case SUB_INTAKING:
 
 
-                            if (robot.hasSample()) {
+                            if (remaining < TIME_PARK) barnaclePark();
+                            else if (robot.hasSample()) {
                                 robot.headlight.setActivated(false);
                                 Pose2d current = robot.drivetrain.pose;
 
@@ -946,15 +996,26 @@ public final class Auto extends LinearOpMode {
                                 robot.intake.extendo.powerCap = 1;
                                 robot.deposit.setWristPitchingAngle(0);
 
-                                activeTraj = robot.drivetrain.actionBuilder(current)
-                                        .stopAndAdd(() -> robot.intake.setRollerAndAngle(0))
-                                        .setTangent(PI + current.heading.toDouble())
-                                        .waitSeconds(WAIT_INTAKE_RETRACT_POST_SUB)
-                                        .splineTo(scoringFromSub.toVector2d(), PI + scoringFromSub.heading)
-                                        .afterTime(0, () -> robot.deposit.setWristPitchingAngle(ANGLE_PITCH_FROM_SUB))
-                                        .stopAndAdd(scoreSample(robot))
-                                        .afterTime(0, () -> robot.deposit.setWristPitchingAngle(0))
-                                        .build();
+                                activeTraj = barnacle == 1 ?
+                                        robot.drivetrain.actionBuilder(current)
+                                                .stopAndAdd(() -> robot.intake.setRollerAndAngle(0))
+                                                .setTangent(PI + current.heading.toDouble())
+                                                .waitSeconds(WAIT_INTAKE_RETRACT_POST_SUB)
+                                                .splineTo(avoidBarnacle1.toVector2d(), PI + avoidBarnacle1.heading)
+                                                .splineTo(scoringFromSub.toVector2d(), PI + scoringFromSub.heading)
+                                                .afterTime(0, () -> robot.deposit.setWristPitchingAngle(ANGLE_PITCH_FROM_SUB))
+                                                .stopAndAdd(scoreSample(robot))
+                                                .afterTime(0, () -> robot.deposit.setWristPitchingAngle(0))
+                                                .build() :
+                                        robot.drivetrain.actionBuilder(current)
+                                                .stopAndAdd(() -> robot.intake.setRollerAndAngle(0))
+                                                .setTangent(PI + current.heading.toDouble())
+                                                .waitSeconds(WAIT_INTAKE_RETRACT_POST_SUB)
+                                                .splineTo(scoringFromSub.toVector2d(), PI + scoringFromSub.heading)
+                                                .afterTime(0, () -> robot.deposit.setWristPitchingAngle(ANGLE_PITCH_FROM_SUB))
+                                                .stopAndAdd(scoreSample(robot))
+                                                .afterTime(0, () -> robot.deposit.setWristPitchingAngle(0))
+                                                .build();
 
                                 subCycle++;
                                 state = SCORING;
@@ -972,20 +1033,32 @@ public final class Auto extends LinearOpMode {
                     return true;
                 }
 
+                private void barnaclePark() {
+                    Pose2d current = robot.drivetrain.pose;
+
+                    EditablePose zone = barnacle == 1 ? park1 :
+                                        barnacle == 2 ? park2 :
+                                                        park3;
+
+                    activeTraj = robot.drivetrain.actionBuilder(current)
+                            .stopAndAdd(() -> robot.intake.setRollerAndAngle(0))
+                            .setTangent(PI + current.heading.toDouble())
+                            .waitSeconds(WAIT_INTAKE_RETRACT_POST_SUB)
+                            .splineTo(zone.toVector2d(), PI + zone.heading)
+                            .build();
+                    state = PARKING;
+                    stopDt();
+                }
+
                 private void searchAgainForSample(Robot robot) {
                     robot.intake.setRollerAndAngle(0);
                     robot.intake.extendo.setExtended(false);
                     robot.intake.ejectSample();
 
-                    Pose2d current = robot.drivetrain.pose;
                     activeTraj = new FirstTerminateAction(
                             t -> !(robot.intake.extendo.getPosition() <= 2),
                             new SleepAction(WAIT_MAX_BEFORE_RE_SEARCH)
                     );
-//                            robot.drivetrain.actionBuilder(current)
-//                            .setTangent(PI / 2)
-//                            .strafeToLinearHeading(snapshotPos.toVector2d(), snapshotPos.heading)
-//                            .build();
 
                     state = DRIVING_TO_SUB;
                 }
@@ -1061,27 +1134,15 @@ public final class Auto extends LinearOpMode {
         );
     }
 
-    private static Action preExtend(Robot robot, double length) {
+    private static Action preExtend(Robot robot) {
         return new SequentialAction(
                 t -> robot.intake.hasSample(),
-                t -> robot.deposit.state.ordinal() < Deposit.State.ARM_MOVING_TO_BASKET.ordinal(),
+                t -> !(robot.deposit.state == Deposit.State.STANDBY || robot.deposit.state.ordinal() >= Deposit.State.ARM_MOVING_TO_BASKET.ordinal()),
                 new InstantAction(() -> {
-                    robot.intake.extendo.setTarget(length);
+                    robot.intake.extendo.setTarget(PRE_EXTEND);
                     robot.intake.setRollerAndAngle(1);
                 })
         );
-    }
-
-    private static boolean atPose(Robot robot, EditablePose target) {
-        EditablePose current = new EditablePose(robot.drivetrain.pose);
-        PoseVelocity2d velocityRR = robot.drivetrain.pinpoint.getVelocityRR();
-        return  abs(target.x - current.x) <= basketError.x &&
-                abs(target.y - current.y) <= basketError.y &&
-                abs(target.heading - current.heading) <= basketError.heading &&
-                abs(velocityRR.linearVel.x) <= basketVelError.x &&
-                abs(velocityRR.linearVel.y) <= basketVelError.y &&
-                abs(velocityRR.angVel) <= basketVelError.heading;
-
     }
 
 }
