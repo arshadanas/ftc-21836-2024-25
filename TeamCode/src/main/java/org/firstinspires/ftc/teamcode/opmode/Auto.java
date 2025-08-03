@@ -107,7 +107,7 @@ public final class Auto extends LinearOpMode {
             LL_DISTANCE_START_LOWERING = 13,
             LL_EXTEND_OFFSET = -9.5,
             LL_MAX_PICTURE_TIME = 3,
-            LL_MIN_PICTURE_TIME = 0,
+            LL_MIN_PICTURE_TIME = 0.5,
             LL_SPEED_MAX_EXTENDO = 1,
             LL_SWEEP_SPEED = 0.5,
             LL_TURN_MULTIPLIER = 1.25,
