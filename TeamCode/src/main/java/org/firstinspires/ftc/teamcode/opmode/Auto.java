@@ -298,8 +298,8 @@ public final class Auto extends LinearOpMode {
         sampleDetector.setPipeline(
                 specimenSide ?
                 /*specimen*/ isRedAlliance ? SampleDetector.Pipeline.RED : SampleDetector.Pipeline.BLUE :
-//                /*sample*/   isRedAlliance ? AutoSampleAligner.Pipeline.YELLOW_RED : AutoSampleAligner.Pipeline.YELLOW_BLUE
-                SampleDetector.Pipeline.BLUE_RED
+                /*sample*/   isRedAlliance ? YELLOW_RED : YELLOW_BLUE
+//                SampleDetector.Pipeline.BLUE_RED
         );
 
         robot.intake.setAlliance(isRedAlliance);
@@ -740,20 +740,20 @@ public final class Auto extends LinearOpMode {
                     switch (state) {
                         case SCORING_PRELOAD:
 
-                            sampleDetector.run();
+//                            sampleDetector.run();
 
                             if (trajDone) {
 
-                                if (!sampleDetector.detections.isEmpty()) {
-                                    double degMinSpike1 = (DEG_CENTER + DEG_SPIKE_1) / 2;
-                                    double degMaxSpike2 = (DEG_SPIKE_2 + DEG_CENTER) / 2;
-                                    barnacle =
-                                            sampleDetector.xDegFromLens > degMinSpike1 ? 2 :
-                                            sampleDetector.xDegFromLens < degMaxSpike2 ? 1 :
-                                                                                         3;
-                                }
-
-                                sampleDetector.setPipeline(isRedAlliance ? YELLOW_RED : YELLOW_BLUE);
+//                                if (!sampleDetector.detections.isEmpty()) {
+//                                    double degMinSpike1 = (DEG_CENTER + DEG_SPIKE_1) / 2;
+//                                    double degMaxSpike2 = (DEG_SPIKE_2 + DEG_CENTER) / 2;
+//                                    barnacle =
+//                                            sampleDetector.xDegFromLens > degMinSpike1 ? 2 :
+//                                            sampleDetector.xDegFromLens < degMaxSpike2 ? 1 :
+//                                                                                         3;
+//                                }
+//
+//                                sampleDetector.setPipeline(isRedAlliance ? YELLOW_RED : YELLOW_BLUE);
                                 stopDt();
 
                                 if (barnacle == 1) {
